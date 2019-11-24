@@ -143,8 +143,9 @@ framescroll.pack(side="right",expand="y")
 tkroot.columnconfigure(0, weight=1)
 buttonframe = tk.Frame(master=tkroot)
 buttonframe.grid(column=0,row=2,sticky="NSEW",rowspan=2,columnspan=3,)
-buttonframe.columnconfigure(1,weight=1)
 buttonframe.columnconfigure(0,weight=1)
+buttonframe.columnconfigure(1,weight=1)
+buttonframe.columnconfigure(2,weight=1)
 
 
 
@@ -192,7 +193,6 @@ def guisetup():
 					fg = "black"
 				newbut.configure(bg =color, fg =fg)
 				if(len(x['name'])>=13):
-					print("smallfont for name: " + x['name'])
 					newbut.configure(font=smallfont)
 
 			else:
