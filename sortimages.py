@@ -19,8 +19,8 @@ import tkinter.font as tkfont
 
 tkroot = tk.Tk()
 destinations = []
-tkroot.geometry("360x900")
-tkroot.geometry("+5+0")
+tkroot.geometry("360x"+str(tkroot.winfo_screenheight()-24))
+tkroot.geometry("+0+0")
 buttons = []
 imagelist=[]
 imgiterator = 0
@@ -29,6 +29,7 @@ guicol=0
 sdp=""
 ddp=""
 exclude=[]
+columns = 2
 
 
 #more guisetup
@@ -119,7 +120,7 @@ def setup(src,dest):
 imagewindow = tk.Toplevel()
 imagewindow.wm_title("Image")
 imagewindow.geometry(str(int(tkroot.winfo_screenwidth()*0.75)) + "x"+ str(tkroot.winfo_screenheight()-100))
-imagewindow.geometry("+370+0")
+imagewindow.geometry("+365+0")
 canvas=tk.Canvas(imagewindow)
 canvas.pack(fill="both",expand=True)
 framescroll=tk.Scrollbar(imagewindow)
@@ -173,6 +174,7 @@ def guisetup():
 	global framescroll
 	global buttonframe
 	global hotkeys
+	global columns
 	for x in buttons:
 		x.destroy() #clear the gui
 	panel.destroy()
@@ -180,10 +182,13 @@ def guisetup():
 	guicol=0
 	itern=0
 	smallfont = tkfont.Font( family='Helvetica',size=10)
+	columns = 2
+	if len(destinations) > int((tkroot.winfo_screenheight()/15)-3):
+		columns = 3
 	for x in destinations:
 		if x['name'] is not "SKIP":
 			if(itern < len(hotkeys)):
-				newbut = tk.Button(buttonframe, text=hotkeys[itern] +": "+ x['name'], command= partial(movefile,x['path']),anchor="w", wraplength=tkroot.winfo_width()/2)
+				newbut = tk.Button(buttonframe, text=hotkeys[itern] +": "+ x['name'], command= partial(movefile,x['path']),anchor="w", wraplength=tkroot.winfo_width()/columns)
 				random.seed(x['name'])
 				tkroot.bind(hotkeys[itern],partial(movefile,x['path']))
 				color = randomColor()
@@ -201,8 +206,10 @@ def guisetup():
 		elif x['name'] == "SKIP":
 			newbut = tk.Button(buttonframe, text="SKIP (Space)", command=skip)
 			tkroot.bind("<space>",skip)
-		newbut.config(font=("Courier",12),width=17,height=1)
-		if guirow-2==int(floor(len(destinations))/2):
+		newbut.config(font=("Courier",12),width=int((tkroot.winfo_width()/12)/columns),height=1)
+		if len(x['name'])>20:
+			newbut.config(font=smallfont)
+		if guirow-2==int(floor(len(destinations))/columns):
 			guirow=1
 			guicol+=1
 		newbut.grid(row=guirow,column=guicol,sticky="ew")
@@ -325,7 +332,7 @@ tkroot.winfo_toplevel().title("Simple Image Sorter v0.9")
 def buttonResizeOnWindowResize(x):
 	if len(buttons)>0:
 		for x in buttons:
-			x.configure(wraplength=tkroot.winfo_width()/2)
+			x.configure(wraplength=tkroot.winfo_width()/columns)
 tkroot.bind("<Configure>", buttonResizeOnWindowResize)
 
 tkroot.mainloop()
