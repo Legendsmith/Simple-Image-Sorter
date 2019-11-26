@@ -14,15 +14,16 @@ import random
 import math
 from tkinter import filedialog as tkFileDialog
 import tkinter.font as tkfont
+from collections import deque
 
 #I am aware this code is fingerpaint-tier
 
 tkroot = tk.Tk()
 destinations = []
-tkroot.geometry("360x"+str(tkroot.winfo_screenheight()-24))
+tkroot.geometry("365x"+str(tkroot.winfo_screenheight()-24))
 tkroot.geometry("+0+0")
 buttons = []
-imagelist=[]
+imagelist= deque()
 imgiterator = 0
 guirow=1
 guicol=0
@@ -107,20 +108,25 @@ def setup(src,dest):
 			if entry.is_dir():
 				destinations.append({'name': entry.name,'path': entry.path})
 		destinations.append({'name': "SKIP"})
+		destinations.append({'name': "BACK"})
 	#walk the source files
 	for root,dirs,files in os.walk(src,topdown=True):
 		dirs[:] = [d for d in dirs if d not in exclude]
 		for name in files:
 			ext = name.split(".")[len(name.split("."))-1].lower()
-			if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext=="webp" or ext=="psd":
-				imagelist.append({"name":name, "path":os.path.join(root,name)})
+			if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext=="webp" or ext=="psd" or ext=="jfif":
+				imagelist.append({"name":name, "path":os.path.join(root,name), "dest":""})
 
+def disable_event():
+    pass
 
 
 imagewindow = tk.Toplevel()
 imagewindow.wm_title("Image")
 imagewindow.geometry(str(int(tkroot.winfo_screenwidth()*0.75)) + "x"+ str(tkroot.winfo_screenheight()-100))
 imagewindow.geometry("+365+0")
+imagewindow.protocol("WM_DELETE_WINDOW", disable_event)
+
 canvas=tk.Canvas(imagewindow)
 canvas.pack(fill="both",expand=True)
 framescroll=tk.Scrollbar(imagewindow)
@@ -154,6 +160,7 @@ def movefile(dest,event=None):
 	global imgiterator
 	shutil.move(imagelist[imgiterator]["path"],dest+"\\"+imagelist[imgiterator]["name"])
 	print("Moved: " + imagelist[imgiterator]["name"] + " to " +dest)
+	imagelist[imgiterator]["dest"] = dest+"\\"+imagelist[imgiterator]["name"]
 	imgiterator+=1
 	displayimage()
 
@@ -183,14 +190,15 @@ def guisetup():
 	itern=0
 	smallfont = tkfont.Font( family='Helvetica',size=10)
 	columns = 2
-	if len(destinations) > int((tkroot.winfo_screenheight()/15)-3):
+	if len(destinations) > int((tkroot.winfo_screenheight()/15)-4):
 		columns = 3
 	for x in destinations:
-		if x['name'] is not "SKIP":
+		if x['name'] is not "SKIP" and  x['name'] is not "BACK":
 			if(itern < len(hotkeys)):
-				newbut = tk.Button(buttonframe, text=hotkeys[itern] +": "+ x['name'], command= partial(movefile,x['path']),anchor="w", wraplength=tkroot.winfo_width()/columns)
+				newbut = tk.Button(buttonframe, text=hotkeys[itern] +": "+ x['name'], command= partial(movefile,x['path']),anchor="w", wraplength=(tkroot.winfo_width()/columns)-1)
 				random.seed(x['name'])
 				tkroot.bind(hotkeys[itern],partial(movefile,x['path']))
+				imagewindow.bind(hotkeys[itern],partial(movefile,x['path']))
 				color = randomColor()
 				fg = 'white'
 
@@ -206,10 +214,13 @@ def guisetup():
 		elif x['name'] == "SKIP":
 			newbut = tk.Button(buttonframe, text="SKIP (Space)", command=skip)
 			tkroot.bind("<space>",skip)
+			imagewindow.bind("<space>",skip)
+		elif x['name'] == "BACK":
+			newbut = tk.Button(buttonframe, text="BACK", command=back)
 		newbut.config(font=("Courier",12),width=int((tkroot.winfo_width()/12)/columns),height=1)
 		if len(x['name'])>20:
 			newbut.config(font=smallfont)
-		if guirow-2==int(floor(len(destinations))/columns):
+		if guirow > ((tkroot.winfo_screenheight()/35)-2):
 			guirow=1
 			guicol+=1
 		newbut.grid(row=guirow,column=guicol,sticky="ew")
@@ -326,13 +337,22 @@ except Exception:
 #You can always rename them later if you desire longer names.
 #Thanks for using this program!""")
 #textout.config(state=tk.DISABLED)
-tkroot.winfo_toplevel().title("Simple Image Sorter v0.92")
+tkroot.winfo_toplevel().title("Simple Image Sorter v1")
+
+def back():
+	global imgiterator
+	if imgiterator > 1:
+		imgiterator-=1
+		shutil.move(imagelist[imgiterator]["dest"],imagelist[imgiterator]["path"])
+		displayimage()
+	else:
+		print("can't find last file to go back to!")
 
 
-def buttonResizeOnWindowResize(x):
+def buttonResizeOnWindowResize(b=""):
 	if len(buttons)>0:
 		for x in buttons:
-			x.configure(wraplength=tkroot.winfo_width()/columns)
+			x.configure(wraplength=buttons[0].winfo_width()-1)
 tkroot.bind("<Configure>", buttonResizeOnWindowResize)
-
+buttonResizeOnWindowResize("a")
 tkroot.mainloop()
