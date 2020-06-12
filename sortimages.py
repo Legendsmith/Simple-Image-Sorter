@@ -529,18 +529,15 @@ def displayimage():
 	global guicol
 	global imagewindow
 	global imageframe
-	if imgiterator>len(imagelist):
-		messagebox.showinfo("You're Done","Reached the end of files, thanks for using Simple Image Sorter.")
-	print("Displaying:"+ imagelist[imgiterator]['path'])
-	tkroot.winfo_toplevel().title("Simple Image Sorter: " +imagelist[imgiterator]['path'])
-	imageframe= CanvasImage(imagewindow,imagelist[imgiterator]['path'])
-	imageframe.grid(column=0,row=0,)
-
-
-	#panel.grid(row=1,column=guicol+1,columnspan=200,rowspan=200, sticky="NSEW")
-	#else:
-	#	panel=tk.Label(tkroot,text="NO MORE IMAGES")
-	#	panel.grid(row=0,column=2)
+	try:
+		print("Displaying:"+ imagelist[imgiterator]['path'])
+		tkroot.winfo_toplevel().title("Simple Image Sorter: " +imagelist[imgiterator]['path'])
+		imageframe = CanvasImage(imagewindow,imagelist[imgiterator]['path'])
+		imageframe.grid(column=0,row=0,)
+	except:
+		messagebox.showinfo("Images Sorted!","Reached the end of files, thanks for using Simple Image Sorter. The Program will now quit. If you had not reached the end of the files, this is a bug, please report it. Thank you!")
+		tkroot.destroy()
+		sys.exit(0)
 
 
 def folderselect(_type):
