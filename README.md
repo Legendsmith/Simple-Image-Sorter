@@ -14,5 +14,6 @@ Pictures
 ├ My stuff
 ├ Misc
 ```
-Then select your new root folder ("Pictures", in the above example) as the ``'destination'``, and the folder that contains all the existing pictures you want to sort as the ``source``. Note these *cannot* be the same folder. They must be different structures.
-Press sort, and sort away! There are hotkeys and buttons for the folders to sort into, which are essentially your categories, and you can customise hotkeys (though you'll need to restart the program).
+- Select your new root folder ("Pictures", in the above example) as the ``'destination'``, and the folder that contains all the existing pictures you want to sort as the ``source``. Note these *cannot* be the same folder. They must be different structures.
+- Press sort, and sort away!
+There are hotkeys and buttons for the folders to sort into, which are essentially your categories, and you can customise hotkeys (though you'll need to restart the program).
