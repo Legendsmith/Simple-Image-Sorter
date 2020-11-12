@@ -625,7 +625,7 @@ except Exception:
 #You can always rename them later if you desire longer names.
 #Thanks for using this program!""")
 #textout.config(state=tk.DISABLED)
-tkroot.winfo_toplevel().title("Simple Image Sorter v1.1")
+tkroot.winfo_toplevel().title("Simple Image Sorter v1.5")
 
 def back():
 	global imgiterator
