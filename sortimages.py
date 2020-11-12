@@ -109,6 +109,7 @@ class CanvasImage:
 		# Put image into container rectangle and use it to set proper coordinates to the image
 		self.container = self.canvas.create_rectangle((0, 0, self.imwidth, self.imheight), width=0)
 		self.__show_image()  # show image on the canvas
+		self.__image.close()
 		self.canvas.focus_set()  # set focus on the canvas
 
 	def smaller(self):
