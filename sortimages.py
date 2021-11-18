@@ -314,7 +314,7 @@ class CanvasImage:
 		self.__scale=scale
 		self.imscale=scale
 		
-		self.canvas.scale('all', self.canvas.winfo_width()/2, self.canvas.winfo_height()/2, scale, scale)  # rescale all objects
+		self.canvas.scale('all', self.canvas.winfo_width(), 0, scale, scale)  # rescale all objects
 		self.redraw_figures()
 		self.__show_image()
 
