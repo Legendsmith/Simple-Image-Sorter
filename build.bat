@@ -1,2 +1,2 @@
 cd %~dp0
-pyinstaller sortimages.py -n Simple_Image_Sorter
+pyinstaller sortimages.py -n Image_Sorter_Files

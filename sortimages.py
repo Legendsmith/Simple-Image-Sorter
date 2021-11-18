@@ -1,11 +1,9 @@
 import os
 from sys import exit
 from tkinter import messagebox
-
-import shutil
+from shutil import move as shmove
 import tkinter as tk
 import tkinter.scrolledtext as tkst
-import PIL
 from PIL import Image,ImageTk
 from functools import partial
 from math import floor
@@ -23,8 +21,6 @@ from collections import deque
 # Advanced zoom for images of various types from small to huge up to several GB
 import math
 import warnings
-import tkinter as tk
-
 from tkinter import ttk
 from PIL import Image, ImageTk
 
@@ -457,9 +453,9 @@ def movefile(dest,event=None):
 	global imgiterator
 	global imageframe
 	imageframe.destroy()
-	shutil.move(imagelist[imgiterator]["path"],dest+"\\"+imagelist[imgiterator]["name"])
+	shmove(os.path.join(imagelist[imgiterator]["path"],dest,imagelist[imgiterator]["name"]))
 	print("Moved: " + imagelist[imgiterator]["name"] + " to " +dest)
-	imagelist[imgiterator]["dest"] = dest+"\\"+imagelist[imgiterator]["name"]
+	imagelist[imgiterator]["dest"] = os.path.join(dest,imagelist[imgiterator]["name"])
 	imgiterator+=1
 	displayimage()
 
@@ -640,7 +636,7 @@ def back():
 	if imgiterator > 0:
 		imgiterator-=1
 		if imagelist[imgiterator]["dest"] !=  "":
-			shutil.move(imagelist[imgiterator]["dest"],imagelist[imgiterator]["path"])
+			shmove(imagelist[imgiterator]["dest"],imagelist[imgiterator]["path"])
 		displayimage()
 	else:
 		print("can't find last file to go back to!")
