@@ -307,14 +307,22 @@ class CanvasImage:
 		del self.__pyramid  # delete pyramid variable
 		self.canvas.destroy()
 		self.__imframe.destroy()
-
-
+	
+	def rescale(self, scale):
+		""" Rescale the Image without doing anything else """
+		print("Image rescale ratio: ",scale)
+		self.__scale=scale
+		self.imscale=scale
+		
+		self.canvas.scale('all', self.canvas.winfo_width()/2, self.canvas.winfo_height()/2, scale, scale)  # rescale all objects
+		self.redraw_figures()
+		self.__show_image()
 
 
 tkroot = tk.Tk()
 destinations = []
-tkroot.geometry("365x"+str(tkroot.winfo_screenheight()-24))
-tkroot.geometry("+0+0")
+tkroot.geometry("365x"+str(tkroot.winfo_screenheight()-120))
+tkroot.geometry("+0+60")
 buttons = []
 imagelist= deque()
 imgiterator = 0
@@ -324,8 +332,6 @@ sdp=""
 ddp=""
 exclude=[]
 columns = 2
-imgscale  = 1.0
-
 
 #more guisetup
 #######
@@ -373,6 +379,7 @@ def validate():
 		setup(sdp,ddp)
 		guisetup()
 		displayimage()
+		saveonexit()
 	elif sdpEntry.get() == ddpEntry.get():
 		sdpEntry.delete(0,len(sdpEntry.get()))
 		ddpEntry.delete(0,len(ddpEntry.get()))
@@ -417,8 +424,8 @@ def disable_event():
 
 imagewindow = tk.Toplevel()
 imagewindow.wm_title("Image")
-imagewindow.geometry(str(int(tkroot.winfo_screenwidth()*0.75)) + "x"+ str(tkroot.winfo_screenheight()-100))
-imagewindow.geometry("+365+0")
+imagewindow.geometry(str(int(tkroot.winfo_screenwidth()*0.80)) + "x"+ str(tkroot.winfo_screenheight()-120))
+imagewindow.geometry("+365+60")
 imagewindow.protocol("WM_DELETE_WINDOW", disable_event)
 imagewindow.rowconfigure(0, weight=1)  # make the CanvasImage widget expandable
 imagewindow.columnconfigure(0, weight=1)
@@ -469,7 +476,6 @@ def guisetup():
 	global sdpEntry
 	global ddpEntry
 	global panel
-	global framescroll
 	global buttonframe
 	global hotkeys
 	global columns
@@ -484,7 +490,7 @@ def guisetup():
 	if len(destinations) > int((tkroot.winfo_screenheight()/15)-4):
 		columns = 3
 	for x in destinations:
-		if x['name'] is not "SKIP" and  x['name'] is not "BACK":
+		if x['name'] != "SKIP" and  x['name'] != "BACK":
 			if(itern < len(hotkeys)):
 				newbut = tk.Button(buttonframe, text=hotkeys[itern] +": "+ x['name'], command= partial(movefile,x['path']),anchor="w", wraplength=(tkroot.winfo_width()/columns)-1)
 				random.seed(x['name'])
@@ -530,16 +536,18 @@ def displayimage():
 	global guicol
 	global imagewindow
 	global imageframe
-	try:
-		print("Displaying:"+ imagelist[imgiterator]['path'])
-		tkroot.winfo_toplevel().title("Simple Image Sorter: " +imagelist[imgiterator]['path'])
-		imageframe = CanvasImage(imagewindow,imagelist[imgiterator]['path'])
-		imageframe.grid(column=0,row=0,)
-	except:
-		messagebox.showinfo("Images Sorted!","Reached the end of files, thanks for using Simple Image Sorter. The Program will now quit. If you had not reached the end of the files, this is a bug, please report it. Thank you!")
-		tkroot.destroy()
-		sys.exit(0)
-
+	if imgiterator >= len(imagelist):
+		if messagebox.askokcancel("Images Sorted!","Reached the end of files, thanks for using Simple Image Sorter. Press OK to quit, or cancel to navigate back if you wish. If you had not reached the end of the files, this is a bug, please report it. Thank you!"):
+			tkroot.destroy()
+			exit(0)
+		else:
+			imgiterator = len(imagelist)-1
+	print("Displaying:"+ imagelist[imgiterator]['path'])
+	tkroot.winfo_toplevel().title("Simple Image Sorter: " +imagelist[imgiterator]['path'])
+	imageframe = CanvasImage(imagewindow,imagelist[imgiterator]['path'])
+	# takes the smaller scale (since that will be the limiting factor) and rescales the image to that so it fits the frame.
+	imageframe.rescale(min(imagewindow.winfo_width()/imageframe.imwidth,imagewindow.winfo_height()/imageframe.imheight))
+	imageframe.grid(column=0,row=0,)
 
 def folderselect(_type):
 	folder = tkFileDialog.askdirectory()
@@ -629,9 +637,9 @@ tkroot.winfo_toplevel().title("Simple Image Sorter v1.5")
 
 def back():
 	global imgiterator
-	if imgiterator > 1:
+	if imgiterator > 0:
 		imgiterator-=1
-		if imagelist[imgiterator]["dest"] is not  "":
+		if imagelist[imgiterator]["dest"] !=  "":
 			shutil.move(imagelist[imgiterator]["dest"],imagelist[imgiterator]["path"])
 		displayimage()
 	else:
