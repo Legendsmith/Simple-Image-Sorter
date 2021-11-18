@@ -447,8 +447,6 @@ buttonframe.columnconfigure(0,weight=1)
 buttonframe.columnconfigure(1,weight=1)
 buttonframe.columnconfigure(2,weight=1)
 
-
-
 def movefile(dest,event=None):
 	global imgiterator
 	global imageframe
@@ -535,6 +533,7 @@ def displayimage():
 	if imgiterator >= len(imagelist):
 		if messagebox.askokcancel("Images Sorted!","Reached the end of files, thanks for using Simple Image Sorter. Press OK to quit, or cancel to navigate back if you wish. If you had not reached the end of the files, this is a bug, please report it. Thank you!"):
 			tkroot.destroy()
+			saveonexit()
 			exit(0)
 		else:
 			imgiterator = len(imagelist)-1
@@ -557,6 +556,10 @@ def folderselect(_type):
 def saveonexit():
 	global sdp
 	global ddp
+	if os.path.exists(sdpEntry.get()):
+		sdp = sdpEntry.get()
+	if os.path.exists(ddpEntry.get()):
+		ddp = ddpEntry.get()
 	save={"srcpath":sdp, "despath":ddp,"exclude":exclude, "hotkeys":hotkeys}
 	try:
 		with open("prefs.json", "w+") as savef:
@@ -630,6 +633,12 @@ except Exception:
 #Thanks for using this program!""")
 #textout.config(state=tk.DISABLED)
 tkroot.winfo_toplevel().title("Simple Image Sorter v1.6")
+
+def closeprogram():
+	saveonexit()
+	tkroot.destroy()
+	exit(0)
+tkroot.protocol("WM_DELETE_WINDOW",closeprogram)
 
 def back():
 	global imgiterator
