@@ -306,7 +306,6 @@ class CanvasImage:
 	
 	def rescale(self, scale):
 		""" Rescale the Image without doing anything else """
-		print("Image rescale ratio: ",scale)
 		self.__scale=scale
 		self.imscale=scale
 		
@@ -451,7 +450,7 @@ def movefile(dest,event=None):
 	global imgiterator
 	global imageframe
 	imageframe.destroy()
-	shmove(os.path.join(imagelist[imgiterator]["path"],dest,imagelist[imgiterator]["name"]))
+	shmove(imagelist[imgiterator]["path"],os.path.join(dest,imagelist[imgiterator]["name"]))
 	print("Moved: " + imagelist[imgiterator]["name"] + " to " +dest)
 	imagelist[imgiterator]["dest"] = os.path.join(dest,imagelist[imgiterator]["name"])
 	imgiterator+=1
@@ -632,7 +631,7 @@ except Exception:
 #You can always rename them later if you desire longer names.
 #Thanks for using this program!""")
 #textout.config(state=tk.DISABLED)
-tkroot.winfo_toplevel().title("Simple Image Sorter v1.6")
+tkroot.winfo_toplevel().title("Simple Image Sorter v1.7")
 
 def closeprogram():
 	saveonexit()
