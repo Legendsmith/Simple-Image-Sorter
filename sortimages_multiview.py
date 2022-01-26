@@ -29,21 +29,23 @@ from hashlib import md5
 class Imagefile:
     name=""
     path=""
+    dest=""
     moved=False
     def __init__(self,name,path) -> None:
         self.name=name
         self.path=path
         self.checked=tk.IntVar(value=0)
-    def move(self):
-        destpath = self.dest["path"]
+    def move(self) -> str:
+        destpath = self.dest
         if destpath != "" and os.path.isdir(destpath):
             try:
                 shmove(self.path, os.path.join(destpath,self.name))
                 self.moved=True
                 self.guidata["frame"].configure(highlightbackground="green", highlightthickness=2)
                 self.path=os.path.join(destpath,self.name)
+                returnstr = ("Moved:" + self.name + " -> " + destpath)
                 destpath=""
-                return "Moved:" + self.name + " -> " + destpath
+                return returnstr
             except Exception as e:
                 logging.error("Error moving: %s . File: %s",e,self.name)
                 return ("Error moving: %s . File: %s",e,self.name)
@@ -52,8 +54,8 @@ class Imagefile:
     def setguidata(self,data):
         self.guidata=data
     def setdest(self,dest):
-        logging.debug("Set destination of %s to %s",self.name,dest["path"])
-        self.dest = dest
+        self.dest=dest["path"]
+        logging.debug("Set destination of %s to %s",self.name,self.dest)
 
     
 
@@ -424,10 +426,14 @@ class SortImages:
     def moveall(self):
         loglist=[]
         for x in self.imagelist:
-            loglist.append(x.move())
+            out=x.move()
+            if isinstance(out, str):
+                loglist.append(out)
         try:
-            with open("filelog.txt", "a") as logfile:
-                logfile.writelines(loglist)
+            if len(loglist) >0:
+                with open("filelog.txt", "a") as logfile:
+                    logging.debug(loglist)
+                    logfile.writelines(loglist)
         except:
             logging.error("Failed to write filelog.txt")
             
@@ -508,15 +514,15 @@ class SortImages:
             except Exception as e:
                 logging.error("Error:: %s",e)
     def generatethumbnails(self,images):
-        logging.info(",md5 hashing %s files",len(images))
+        logging.info("md5 hashing %s files",len(images))
         with concurrent.ThreadPoolExecutor(max_workers=3) as executor:
             executor.map(self.makethumb, images)
-        logging.debug("Finished making thumbnails")
+        logging.info("Finished making thumbnails")
 
 
 
 # Run Program
 if __name__ == '__main__':
     format = "%(asctime)s: %(message)s"
-    logging.basicConfig(format=format, level=logging.DEBUG,datefmt="%H:%M:%S")
+    logging.basicConfig(format=format, level=logging.WARNING,datefmt="%H:%M:%S")
     mainclass = SortImages()
