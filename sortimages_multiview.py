@@ -2,7 +2,6 @@ import math
 import os
 from sys import exit
 import textwrap
-from tkinter import HORIZONTAL, messagebox
 from shutil import move as shmove
 import tkinter as tk
 import tkinter.scrolledtext as tkst
@@ -20,7 +19,7 @@ from canvasimage import CanvasImage
 import concurrent.futures as concurrent
 import logging
 from hashlib import md5
-
+import pyvips
 
 class Imagefile:
     name=""
@@ -90,7 +89,7 @@ def saveprefs(manager,gui):
         ddp = gui.ddpEntry.get()
     else:
         ddp=""
-    save={"srcpath":sdp, "despath":ddp,"exclude":manager.exclude, "hotkeys":gui.hotkeys,"thumbnailgrid":gui.thumbnailgrid,"thumbnailsize":gui.thumbnailsize}
+    save={"srcpath":sdp, "despath":ddp,"exclude":manager.exclude, "hotkeys":gui.hotkeys,"thumbnailgrid":gui.thumbnailgrid,"thumbnailsize":gui.thumbnailsize,"threads":manager.threads}
     try:
         with open("prefs.json", "w+") as savef:
             json.dump(save,savef)
@@ -120,7 +119,7 @@ class GUIManager(tk.Tk):
         self.buttons = []
         self.hotkeys = "123456qwerty7890uiop[asdfghjkl;zxcvbnm,.!@#$%^QWERT&*()_UIOPASDFGHJKLZXCVBNM<>"
         #Paned window that holds the almost top level stuff.
-        self.toppane= Panedwindow(self,orient=HORIZONTAL)
+        self.toppane= Panedwindow(self,orient="horizontal")
         # Frame for the left hand side that holds the setup and also the destination buttons.
         self.leftui=tk.Frame(self.toppane)
         self.leftui.grid(row=0,column=0,sticky="NESW")
@@ -192,19 +191,20 @@ Thanks you for using this program!""")
         # options frame
         optionsframe = tk.Frame(self.leftui)
         self.hideonassignvar=tk.BooleanVar() #have this just get checked when setting dstination then hide or not
+        self.hideonassignvar.set(True)
         hideonassign = tk.Checkbutton(optionsframe,text="Hide Images Upon assigning destination",variable=self.hideonassignvar, onvalue=True,offvalue=False)
         hideonassign.grid(column=0,row=0)
         self.hidemovedvar=tk.BooleanVar()
         self.showhiddenvar=tk.BooleanVar()
         showhidden= tk.Checkbutton(optionsframe,text="Show Hidden Images",variable=self.showhiddenvar, onvalue=True,offvalue=False)
-        showhidden.grid(column=0,row=1)
+        showhidden.grid(column=0,row=1,sticky="W")
         hidemoved=tk.Checkbutton(optionsframe,text="Hide Moved",variable=self.hidemovedvar,onvalue=True,offvalue=False)
         hidemoved.grid(column=1,row=1)
         self.showhidden = showhidden
         self.hideonassign=hideonassign
         hideonassign.grid(column=1,row=0)
         moveallbutton=tk.Button(optionsframe,text="Move All",command=fileManager.moveall)
-        moveallbutton.grid(column=0,row=2,sticky="EW")
+        moveallbutton.grid(column=0,row=2,columnspan=3,sticky="EW")
 
         self.optionsframe=optionsframe
     def showall(self):
@@ -354,10 +354,12 @@ Thanks you for using this program!""")
         self.entryframe.grid_remove()
         self.optionsframe.grid(row=0,column=0,sticky="w")
     def hideassignedsquare(self,imlist):
+        logging.info(self.hideonassignvar.get())
         if self.hideonassignvar.get():
             for x in imlist:
-                x.guidata["frame"].grid_remove()
-                x.guidata["show"]=False
+                if x.dest !="":
+                    x.guidata["frame"].grid_remove()
+                    x.guidata["show"]=False
     def hideallsquares(self):
         for x in self.gridsquarelist:
             x.grid_remove()
@@ -376,11 +378,6 @@ Thanks you for using this program!""")
             for x in self.fileManager.imagelist:
                 if x.moved:
                     x.guidata["frame"].grid_remove()
-
-
-
-
-
 
 
 
@@ -408,6 +405,10 @@ class SortImages:
                 if 'thumbnailsize' in jprefs:
                     self.gui.thumbnailsize = jprefs["thumbnailsize"]
                     self.thumbnailsize = jprefs["thumbnailsize"]
+                if 'threads' in jprefs:
+                    self.threads=jprefs['threads']
+                else:
+                    self.threads=5
                 self.exclude = jprefs["exclude"]
                 self.gui.sdpEntry.delete(0,len(self.gui.sdpEntry.get()))
                 self.gui.ddpEntry.delete(0,len(self.gui.ddpEntry.get()))
@@ -428,13 +429,10 @@ class SortImages:
         try:
             if len(loglist) >0:
                 with open("filelog.txt", "a") as logfile:
-                    logging.debug(loglist)
                     logfile.writelines(loglist)
         except:
             logging.error("Failed to write filelog.txt")
             
-
-
     def walk(self,src):
         for root,dirs,files in os.walk(src,topdown=True):
             dirs[:] = [d for d in dirs if d not in self.exclude]
@@ -454,11 +452,6 @@ class SortImages:
             obj.guidata["frame"]['background']=dest['color']
             obj.guidata["check"].invoke()
         self.gui.hideassignedsquare(marked)
-        
-        
-
-            
-            
         
     def validate(self,gui):
         samepath =  (gui.sdpEntry.get() == gui.ddpEntry.get())
@@ -491,27 +484,23 @@ class SortImages:
         self.generatethumbnails(self.walk(src))
 
     def makethumb(self,imagefile):
-        with Image.open(imagefile.path) as img:
-            hash=md5()
-            hash.update(img.tobytes())
-            imagefile.setid(hash.hexdigest())
+        im = pyvips.Image.new_from_file(imagefile.path,)
+        hash=md5()
+        hash.update(im.write_to_memory())
+        imagefile.setid(hash.hexdigest())
         thumbpath=os.path.join("data",imagefile.id+os.extsep+"jpg")
         if  os.path.exists(thumbpath):
             imagefile.thumbnail=thumbpath
         else:
             try:
-                thumbsize=self.thumbnailsize
-                im = Image.open(imagefile.path)
-                if im.mode in ("RGBA", "P"): im = im.convert("RGB") #discard transparency
-                MAX_SIZE=(thumbsize,thumbsize)
-                im.thumbnail(MAX_SIZE)
-                im.save(thumbpath)
+                im = pyvips.Image.thumbnail(imagefile.path, self.thumbnailsize)
+                im.write_to_file(thumbpath)
                 imagefile.thumbnail=thumbpath
             except Exception as e:
                 logging.error("Error:: %s",e)
     def generatethumbnails(self,images):
         logging.info("md5 hashing %s files",len(images))
-        with concurrent.ThreadPoolExecutor(max_workers=3) as executor:
+        with concurrent.ThreadPoolExecutor(max_workers=self.threads) as executor:
             executor.map(self.makethumb, images)
         logging.info("Finished making thumbnails")
 
@@ -520,5 +509,5 @@ class SortImages:
 # Run Program
 if __name__ == '__main__':
     format = "%(asctime)s: %(message)s"
-    logging.basicConfig(format=format, level=logging.WARNING,datefmt="%H:%M:%S")
+    logging.basicConfig(format=format, level=logging.INFO,datefmt="%H:%M:%S")
     mainclass = SortImages()
