@@ -1,10 +1,6 @@
-from distutils.log import debug
 import math
 import os
-from pickle import FALSE
-import shutil
 from sys import exit
-from textwrap import wrap
 import textwrap
 from tkinter import HORIZONTAL, messagebox
 from shutil import move as shmove
