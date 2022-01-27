@@ -223,7 +223,7 @@ Thank you for using this program!""")
                                     variable=self.showhiddenvar, onvalue=True, offvalue=False,command=self.showhiddensquares)
         showhidden.grid(column=0, row=1, sticky="W")
         hidemoved = tk.Checkbutton(optionsframe, text="Hide Moved",
-                                   variable=self.hidemovedvar, onvalue=True, offvalue=False)
+                                   variable=self.hidemovedvar, onvalue=True, offvalue=False, command=self.hidemoved)
         hidemoved.grid(column=1, row=1)
         self.showhidden = showhidden
         self.hideonassign = hideonassign
@@ -436,8 +436,8 @@ Thank you for using this program!""")
                 if x.moved:
                     try:
                         self.imagegrid.window_configure(x.guidata["frame"], window='')
-                    except:
-                        pass
+                    except Exception as e:
+                        logging("Error: "+e)
 
 
 class SortImages:
@@ -452,7 +452,7 @@ class SortImages:
         if(os.path.exists("data") and os.path.isdir("data")):
             pass
         else:
-            os.mkdir(os.path.sep+"data")
+            os.mkdir("data")
         hotkeys = ""
         #todo: replace this with some actual prefs manager that isn't a shittone of ifs
         try:
