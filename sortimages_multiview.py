@@ -97,7 +97,7 @@ def saveprefs(manager, gui):
     else:
         ddp = ""
     save = {"srcpath": sdp, "despath": ddp, "exclude": manager.exclude, "hotkeys": gui.hotkeys,
-            "thumbnailgrid": gui.thumbnailgrid, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads,"hideonassign":gui.hideonassignvar.get(),"hidemoved":gui.hidemovedvar.get()}
+            "thumbnailgrid": gui.thumbnailgrid, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads, "hideonassign": gui.hideonassignvar.get(), "hidemoved": gui.hidemovedvar.get()}
     try:
         with open("prefs.json", "w+") as savef:
             json.dump(save, savef)
@@ -220,7 +220,7 @@ Thank you for using this program!""")
         self.hidemovedvar = tk.BooleanVar()
         self.showhiddenvar = tk.BooleanVar()
         showhidden = tk.Checkbutton(optionsframe, text="Show Hidden Images",
-                                    variable=self.showhiddenvar, onvalue=True, offvalue=False,command=self.showhiddensquares)
+                                    variable=self.showhiddenvar, onvalue=True, offvalue=False, command=self.showhiddensquares)
         showhidden.grid(column=0, row=1, sticky="W")
         hidemoved = tk.Checkbutton(optionsframe, text="Hide Moved",
                                    variable=self.hidemovedvar, onvalue=True, offvalue=False, command=self.hidemoved)
@@ -273,7 +273,7 @@ Thank you for using this program!""")
         try:
             #buffer = pyvips.Image.new_from_file(imageobj.thumbnail)
             #img= ImageTk.PhotoImage(Image.frombuffer("L",[buffer.width,buffer.height],buffer.write_to_memory()))
-            #Wish I knew how to make that work properly^
+            # Wish I knew how to make that work properly^
             #
             img = ImageTk.PhotoImage(Image.open(imageobj.thumbnail))
             frame = tk.Frame(parent, width=self.thumbnailsize +
@@ -293,7 +293,7 @@ Thank you for using this program!""")
             frame.config(height=self.thumbnailsize+12)
             # save the data to the image obj to both store a reference and for later manipulation
             imageobj.setguidata(
-                {"img": img, "frame": frame, "canvas":canvas, "check": check, "show": True})
+                {"img": img, "frame": frame, "canvas": canvas, "check": check, "show": True})
             # anything other than rightclicking toggles the checkbox, as we want.
             canvas.bind("<Button-1>", partial(bindhandler, check, "invoke"))
             canvas.bind(
@@ -398,18 +398,20 @@ Thank you for using this program!""")
         ddpEntry.config(state=tk.DISABLED)
         self.entryframe.grid_remove()
         self.optionsframe.grid(row=0, column=0, sticky="w")
-    
-    #todo: make 'moved' and 'assigned' lists so the show all etc just has to iterate over those.
+
+    # todo: make 'moved' and 'assigned' lists so the show all etc just has to iterate over those.
     def hideassignedsquare(self, imlist):
         if self.hideonassignvar.get():
             for x in imlist:
                 if x.dest != "":
-                    self.imagegrid.window_configure(x.guidata["frame"], window='')
+                    self.imagegrid.window_configure(
+                        x.guidata["frame"], window='')
                     x.guidata["show"] = False
 
     def hideallsquares(self):
         for x in self.gridsquarelist:
             self.imagegrid.window_configure(x, window="")
+
     def showhiddensquares(self):
         if self.showhiddenvar.get():
             for x in self.gridsquarelist:
@@ -421,21 +423,24 @@ Thank you for using this program!""")
     def showunassigned(self, imlist):
         for x in imlist:
             if x.guidata["show"] or x.dest == "":
-                self.imagegrid.window_create("insert", window=x.guidata["frame"])
+                self.imagegrid.window_create(
+                    "insert", window=x.guidata["frame"])
                 x.guidata["frame"].grid()
 
-    def showthisdest(self, dest,a,b):
+    def showthisdest(self, dest, a):
         self.hideallsquares()
         for x in self.fileManager.imagelist:
             if x.dest == dest:
-                self.imagegrid.window_create("insert", window=x.guidata["frame"])
+                self.imagegrid.window_create(
+                    "insert", window=x.guidata["frame"])
 
     def hidemoved(self):
         if self.hidemovedvar.get():
             for x in self.fileManager.imagelist:
                 if x.moved:
                     try:
-                        self.imagegrid.window_configure(x.guidata["frame"], window='')
+                        self.imagegrid.window_configure(
+                            x.guidata["frame"], window='')
                     except Exception as e:
                         logging("Error: "+e)
 
@@ -454,7 +459,7 @@ class SortImages:
         else:
             os.mkdir("data")
         hotkeys = ""
-        #todo: replace this with some actual prefs manager that isn't a shittone of ifs
+        # todo: replace this with some actual prefs manager that isn't a shittone of ifs
         try:
             with open("prefs.json", "r") as prefsfile:
                 jdata = prefsfile.read()
@@ -489,7 +494,7 @@ class SortImages:
         loglist = []
         for x in self.imagelist:
             out = x.move()
-            x.dest=""
+            x.dest = ""
             if isinstance(out, str):
                 loglist.append(out)
 
@@ -500,8 +505,6 @@ class SortImages:
         except:
             logging.error("Failed to write filelog.txt")
         self.gui.hidemoved()
-            
-
 
     def walk(self, src):
         for root, dirs, files in os.walk(src, topdown=True):
@@ -535,7 +538,7 @@ class SortImages:
             logging.info("GUI setup")
             gui.guisetup(self.destinations)
             logging.info("displaying first image grid")
-            #todo add this as a config option
+            # todo add this as a config option
             gui.displaygrid(self.imagelist, range(0, len(self.imagelist)))
         elif gui.sdpEntry.get() == gui.ddpEntry.get():
             gui.sdpEntry.delete(0, len(gui.sdpEntry.get()))
