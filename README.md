@@ -1,6 +1,5 @@
 # Simple-Image-Sorter
 Sorts images into destination files. Written in python. I got really sick of organising my character art and meme folders by hand.
-The UI is basic but functional, someone better at TKinter than I am could improve it though.
 
 ## USE
 - Make sure all your files that you want to sort are in some kind of directory/folder already, they can be in folders within that folder, that's fine.
@@ -15,6 +14,7 @@ Pictures
 ├ Misc
 ```
 - Select your new root folder ("Pictures", in the above example) as the ``'destination'``, and the folder that contains all the existing pictures you want to sort as the ``source``. Note these *cannot* be the same folder. They must be different structures.
-- Press sort, and sort away!
+- Press Ready!
+Designate images by clicking on them, then assign them to destinations with the corresponding destination button. When you're ready, click "move all" to move everything at once.
 
 There are hotkeys and buttons for the folders to sort into, which are essentially your categories, and you can customise hotkeys (though you'll need to restart the program). Hotkeys can be customized in prefs.json
