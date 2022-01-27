@@ -125,4 +125,12 @@ dmypy.json
 .pyre/
 #mystuff
 prefs.json
-prefs.json
+data/
+filelog.txt
+vipsthumbnail.exe
+vipsedit.exe
+vips.exe
+libglib-2.0-0.dll
+libgobject-2.0-0.dll
+libvips-42.dll
+libvips-cpp-42.dll
