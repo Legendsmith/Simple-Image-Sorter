@@ -1,4 +1,3 @@
-import math
 import os
 from sys import exit
 import textwrap
@@ -42,7 +41,7 @@ class Imagefile:
                 self.guidata["frame"].configure(
                     highlightbackground="green", highlightthickness=2)
                 self.path = os.path.join(destpath, self.name)
-                returnstr = ("Moved:" + self.name + " -> " + destpath)
+                returnstr = ("Moved:" + self.name + " -> " + destpath + "\n")
                 destpath = ""
                 return returnstr
             except Exception as e:
@@ -98,7 +97,7 @@ def saveprefs(manager, gui):
     else:
         ddp = ""
     save = {"srcpath": sdp, "despath": ddp, "exclude": manager.exclude, "hotkeys": gui.hotkeys,
-            "thumbnailgrid": gui.thumbnailgrid, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads}
+            "thumbnailgrid": gui.thumbnailgrid, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads,"hideonassign":gui.hideonassignvar.get(),"hidemoved":gui.hidemovedvar.get()}
     try:
         with open("prefs.json", "w+") as savef:
             json.dump(save, savef)
@@ -115,7 +114,7 @@ def bindhandler(*args):
     elif command == "destroy":
         widget.destroy()
     elif command == "scroll":
-        widget.yview_scroll(-1*math.floor(args[2].delta/120), "units")
+        widget.yview_scroll(-1*floor(args[2].delta/120), "units")
 
 
 class GUIManager(tk.Tk):
@@ -147,7 +146,10 @@ It is reccomended that the folder names are not super long. You can always renam
 You can change the hotkeys in prefs.json, just type a string of letters and numbers and it'll use that. It differentiates between lower and upper case (anything that uses shift), but not numpad.
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class.
 Rightclick a thumbnail to show the full image. You can use arrow keys or click and drag to pan the popout image. Mouse Wheel Zooms the image.
-Thanks you for using this program!""")
+
+Program may hang when you hit Ready on a large number of files, it's just working, don't worry!
+
+Thank you for using this program!""")
         self.panel.grid(row=11, column=0, columnspan=200,
                         rowspan=200, sticky="NSEW")
 
@@ -218,7 +220,7 @@ Thanks you for using this program!""")
         self.hidemovedvar = tk.BooleanVar()
         self.showhiddenvar = tk.BooleanVar()
         showhidden = tk.Checkbutton(optionsframe, text="Show Hidden Images",
-                                    variable=self.showhiddenvar, onvalue=True, offvalue=False)
+                                    variable=self.showhiddenvar, onvalue=True, offvalue=False,command=self.showhiddensquares)
         showhidden.grid(column=0, row=1, sticky="W")
         hidemoved = tk.Checkbutton(optionsframe, text="Hide Moved",
                                    variable=self.hidemovedvar, onvalue=True, offvalue=False)
@@ -272,18 +274,17 @@ Thanks you for using this program!""")
             #buffer = pyvips.Image.new_from_file(imageobj.thumbnail)
             #img= ImageTk.PhotoImage(Image.frombuffer("L",[buffer.width,buffer.height],buffer.write_to_memory()))
             #Wish I knew how to make that work properly^
+            #
             img = ImageTk.PhotoImage(Image.open(imageobj.thumbnail))
             frame = tk.Frame(parent, width=self.thumbnailsize +
                              14, height=self.thumbnailsize+24)
             canvas = tk.Canvas(frame, width=self.thumbnailsize,
                                height=self.thumbnailsize)
-            canvas.uuid = imageobj.id
-            canvas.img = img
             canvas.create_image(
                 self.thumbnailsize/2, self.thumbnailsize/2, anchor="center", image=img)
 
             text = textwrap.fill(
-                imageobj.name, math.floor(self.thumbnailsize/12))
+                imageobj.name, floor(self.thumbnailsize/12))
             check = Checkbutton(frame, text=text, variable=imageobj.checked)
             canvas.grid(column=0, row=0, sticky="NSEW")
             check.grid(column=0, row=1, sticky="N")
@@ -292,7 +293,7 @@ Thanks you for using this program!""")
             frame.config(height=self.thumbnailsize+12)
             # save the data to the image obj to both store a reference and for later manipulation
             imageobj.setguidata(
-                {"img": img, "frame": frame, "check": check, "show": True})
+                {"img": img, "frame": frame, "canvas":canvas, "check": check, "show": True})
             # anything other than rightclicking toggles the checkbox, as we want.
             canvas.bind("<Button-1>", partial(bindhandler, check, "invoke"))
             canvas.bind(
@@ -397,35 +398,46 @@ Thanks you for using this program!""")
         ddpEntry.config(state=tk.DISABLED)
         self.entryframe.grid_remove()
         self.optionsframe.grid(row=0, column=0, sticky="w")
-
+    
+    #todo: make 'moved' and 'assigned' lists so the show all etc just has to iterate over those.
     def hideassignedsquare(self, imlist):
         if self.hideonassignvar.get():
             for x in imlist:
                 if x.dest != "":
-                    x.guidata["frame"].grid_remove()
+                    self.imagegrid.window_configure(x.guidata["frame"], window='')
                     x.guidata["show"] = False
 
     def hideallsquares(self):
         for x in self.gridsquarelist:
-            x.grid_remove()
+            self.imagegrid.window_configure(x, window="")
+    def showhiddensquares(self):
+        if self.showhiddenvar.get():
+            for x in self.gridsquarelist:
+                self.imagegrid.window_create("insert", window=x)
+        else:
+            self.hideassignedsquare(self.fileManager.imagelist)
+            self.hidemoved()
 
     def showunassigned(self, imlist):
         for x in imlist:
             if x.guidata["show"] or x.dest == "":
+                self.imagegrid.window_create("insert", window=x.guidata["frame"])
                 x.guidata["frame"].grid()
-        self.hideassignedsquare(imlist)
 
-    def showthisdest(self, dest):
+    def showthisdest(self, dest,a,b):
         self.hideallsquares()
         for x in self.fileManager.imagelist:
             if x.dest == dest:
-                x.guidata["frame"].grid()
+                self.imagegrid.window_create("insert", window=x.guidata["frame"])
 
     def hidemoved(self):
         if self.hidemovedvar.get():
             for x in self.fileManager.imagelist:
                 if x.moved:
-                    x.guidata["frame"].grid_remove()
+                    try:
+                        self.imagegrid.window_configure(x.guidata["frame"], window='')
+                    except:
+                        pass
 
 
 class SortImages:
@@ -442,6 +454,7 @@ class SortImages:
         else:
             os.mkdir(os.path.sep+"data")
         hotkeys = ""
+        #todo: replace this with some actual prefs manager that isn't a shittone of ifs
         try:
             with open("prefs.json", "r") as prefsfile:
                 jdata = prefsfile.read()
@@ -457,6 +470,10 @@ class SortImages:
                     self.threads = jprefs['threads']
                 else:
                     self.threads = 5
+                if "hideonassign" in jprefs:
+                    self.gui.hideonassignvar.set(jprefs["hideonassign"])
+                if "hidemoved" in jprefs:
+                    self.gui.hidemovedvar.set(jprefs["hidemoved"])
                 self.exclude = jprefs["exclude"]
                 self.gui.sdpEntry.delete(0, len(self.gui.sdpEntry.get()))
                 self.gui.ddpEntry.delete(0, len(self.gui.ddpEntry.get()))
@@ -472,6 +489,7 @@ class SortImages:
         loglist = []
         for x in self.imagelist:
             out = x.move()
+            x.dest=""
             if isinstance(out, str):
                 loglist.append(out)
 
@@ -503,6 +521,7 @@ class SortImages:
         for obj in marked:
             obj.setdest(dest)
             obj.guidata["frame"]['background'] = dest['color']
+            obj.guidata["canvas"]['background'] = dest['color']
             obj.guidata["check"].invoke()
         self.gui.hideassignedsquare(marked)
 
@@ -516,6 +535,7 @@ class SortImages:
             logging.info("GUI setup")
             gui.guisetup(self.destinations)
             logging.info("displaying first image grid")
+            #todo add this as a config option
             gui.displaygrid(self.imagelist, range(0, len(self.imagelist)))
         elif gui.sdpEntry.get() == gui.ddpEntry.get():
             gui.sdpEntry.delete(0, len(gui.sdpEntry.get()))
