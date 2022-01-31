@@ -217,7 +217,7 @@ Thank you for using this program!""")
         self.rowconfigure(0, weight=10)
         self.rowconfigure(1, weight=0)
         self.protocol("WM_DELETE_WINDOW", self.closeprogram)
-        self.winfo_toplevel().title("Simple Image Sorter v2.1")
+        self.winfo_toplevel().title("Simple Image Sorter: Multiview Edition v2.1")
         self.leftui.bind("<Configure>", self.buttonResizeOnWindowResize)
         self.buttonResizeOnWindowResize("a")
 
@@ -315,7 +315,7 @@ Thank you for using this program!""")
         path = imageobj.path
         logging.info("Displaying:" + path)
         imagewindow = tk.Toplevel()
-        imagewindow.rowconfigure(0, weight=1)
+        imagewindow.rowconfigure(1, weight=1)
         imagewindow.columnconfigure(0, weight=1)
         imagewindow.wm_title("Image: " + path)
         imagewindow.geometry(str(
