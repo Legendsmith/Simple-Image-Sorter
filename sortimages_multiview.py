@@ -260,7 +260,7 @@ Thank you for using this program!""")
         try:
             #buffer = pyvips.Image.new_from_file(imageobj.thumbnail)
             #img= ImageTk.PhotoImage(Image.frombuffer("L",[buffer.width,buffer.height],buffer.write_to_memory()))
-            #Wish I knew how to make that work properly^
+            # Wish I knew how to make that work properly^
             #
             if setguidata:
                 img = ImageTk.PhotoImage(Image.open(imageobj.thumbnail))
@@ -429,18 +429,20 @@ Thank you for using this program!""")
         optionsframe.columnconfigure(2,weight=2)
         self.optionsframe = optionsframe
         self.optionsframe.grid(row=0, column=0, sticky="w")
-    
-    #todo: make 'moved' and 'assigned' lists so the show all etc just has to iterate over those.
+
+    # todo: make 'moved' and 'assigned' lists so the show all etc just has to iterate over those.
     def hideassignedsquare(self, imlist):
         if self.hideonassignvar.get():
             for x in imlist:
                 if x.dest != "":
-                    self.imagegrid.window_configure(x.guidata["frame"], window='')
+                    self.imagegrid.window_configure(
+                        x.guidata["frame"], window='')
                     x.guidata["show"] = False
 
     def hideallsquares(self):
         for x in self.gridsquarelist:
             self.imagegrid.window_configure(x, window="")
+
     def showhiddensquares(self):
         if self.showhiddenvar.get():
             for x in self.gridsquarelist:
@@ -452,7 +454,8 @@ Thank you for using this program!""")
     def showunassigned(self, imlist):
         for x in imlist:
             if x.guidata["show"] or x.dest == "":
-                self.imagegrid.window_create("insert", window=x.guidata["frame"])
+                self.imagegrid.window_create(
+                    "insert", window=x.guidata["frame"])
                 x.guidata["frame"].grid()
 
     def showthisdest(self, dest,*args):
@@ -476,7 +479,8 @@ Thank you for using this program!""")
             for x in self.fileManager.imagelist:
                 if x.moved:
                     try:
-                        self.imagegrid.window_configure(x.guidata["frame"], window='')
+                        self.imagegrid.window_configure(
+                            x.guidata["frame"], window='')
                     except Exception as e:
                         logging("Error: "+e)
     
@@ -503,7 +507,7 @@ class SortImages:
         else:
             os.mkdir("data")
         hotkeys = ""
-        #todo: replace this with some actual prefs manager that isn't a shittone of ifs
+        # todo: replace this with some actual prefs manager that isn't a shittone of ifs
         try:
             with open("prefs.json", "r") as prefsfile:
                 jdata = prefsfile.read()
@@ -540,7 +544,7 @@ class SortImages:
         loglist = []
         for x in self.imagelist:
             out = x.move()
-            x.dest=""
+            x.dest = ""
             if isinstance(out, str):
                 loglist.append(out)
 
@@ -551,8 +555,6 @@ class SortImages:
         except:
             logging.error("Failed to write filelog.txt")
         self.gui.hidemoved()
-            
-
 
     def walk(self, src):
         for root, dirs, files in os.walk(src, topdown=True):
