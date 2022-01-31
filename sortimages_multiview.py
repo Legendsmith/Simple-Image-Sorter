@@ -11,7 +11,7 @@ from math import floor
 import json
 import random
 from math import floor, sqrt
-from tkinter import filedialog as tkFileDialog
+from tkinter import Grid, Scrollbar, filedialog as tkFileDialog
 import tkinter.font as tkfont
 from collections import deque
 from canvasimage import CanvasImage
@@ -22,31 +22,31 @@ import pyvips
 
 
 class Imagefile:
-    name = ""
     path = ""
     dest = ""
     moved = False
 
     def __init__(self, name, path) -> None:
-        self.name = name
+        self.name=tk.StringVar()
+        self.name.set(name)
         self.path = path
         self.checked = tk.IntVar(value=0)
 
     def move(self) -> str:
-        destpath = self.dest
+        destpath = self.dest['path']
         if destpath != "" and os.path.isdir(destpath):
             try:
-                shmove(self.path, os.path.join(destpath, self.name))
+                shmove(self.path, os.path.join(destpath, self.name.get()))
                 self.moved = True
                 self.guidata["frame"].configure(
                     highlightbackground="green", highlightthickness=2)
-                self.path = os.path.join(destpath, self.name)
-                returnstr = ("Moved:" + self.name + " -> " + destpath + "\n")
+                self.path = os.path.join(destpath, self.name.get())
+                returnstr = ("Moved:" + self.name.get() + " -> " + destpath + "\n")
                 destpath = ""
                 return returnstr
             except Exception as e:
-                logging.error("Error moving: %s . File: %s", e, self.name)
-                return ("Error moving: %s . File: %s", e, self.name)
+                logging.error("Error moving: %s . File: %s", e, self.name.get())
+                return ("Error moving: %s . File: %s", e, self.name.get())
 
     def setid(self, id):
         self.id = id
@@ -56,7 +56,7 @@ class Imagefile:
 
     def setdest(self, dest):
         self.dest = dest["path"]
-        logging.debug("Set destination of %s to %s", self.name, self.dest)
+        logging.debug("Set destination of %s to %s", self.name.get(), self.dest)
 
 
 def disable_event():
@@ -86,6 +86,8 @@ def luminance(hexin):
     else:
         return 'dark'
 
+def isnumber(char):
+    return char.isdigit()
 
 def saveprefs(manager, gui):
     if os.path.exists(gui.sdpEntry.get()):
@@ -97,7 +99,7 @@ def saveprefs(manager, gui):
     else:
         ddp = ""
     save = {"srcpath": sdp, "despath": ddp, "exclude": manager.exclude, "hotkeys": gui.hotkeys,
-            "thumbnailgrid": gui.thumbnailgrid, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads,"hideonassign":gui.hideonassignvar.get(),"hidemoved":gui.hidemovedvar.get()}
+            "thumbnailgrid": gui.thumbnailgrid, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads,"hideonassign":gui.hideonassignvar.get(),"hidemoved":gui.hidemovedvar.get(),"squaresperpage":gui.squaresperpage.get()}
     try:
         with open("prefs.json", "w+") as savef:
             json.dump(save, savef)
@@ -123,7 +125,15 @@ class GUIManager(tk.Tk):
 
     def __init__(self, fileManager) -> None:
         super().__init__()
+        #variable initiation
         self.gridsquarelist = []
+        self.hideonassignvar = tk.BooleanVar()
+        self.hideonassignvar.set(True)
+        self.hidemovedvar = tk.BooleanVar()
+        self.showhiddenvar = tk.BooleanVar()
+        self.squaresperpage=tk.IntVar()
+        self.squaresperpage.set(120)
+        # store the reference to the file manager class.
         self.fileManager = fileManager
         self.geometry(str(self.winfo_screenwidth()-5)+"x" +
                       str(self.winfo_screenheight()-120))
@@ -142,13 +152,15 @@ class GUIManager(tk.Tk):
         self.panel = tk.Label(self.leftui, wraplength=300, justify="left", text="""Select a source directory to search for images in above.
 The program will find all png, gif, jpg, bmp, pcx, tiff, Webp, and psds. It can has as many sub-folders as you like, the program will scan them all (except exclusions).
 Enter a root folder to sort to for the "Destination field" too. The destination directory MUST have sub folders, since those are the folders that you will be sorting to.
-It is reccomended that the folder names are not super long. You can always rename them later if you desire longer names. Exclusions let you ignore folder names. They are saved (unless you delete prefs.json). Remember that it's one per line, no commas or anything.
+\d (unless you delete prefs.json). Remember that it's one per line, no commas or anything.
 You can change the hotkeys in prefs.json, just type a string of letters and numbers and it'll use that. It differentiates between lower and upper case (anything that uses shift), but not numpad.
+
+By default the program will only load a portion of the images in the folder for performance reasons. Press the "Add Files" button to make it load another chunk. You can configure how many it adds and loads at once in the program.  
+
+Right-click on Destination Buttons to show which images are assigned to them. (Does not show those that have already been moved)  
+Right-click on Thumbnails to show a zoomable full view. You can also **rename** images from this view.  
+
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class.
-Rightclick a thumbnail to show the full image. You can use arrow keys or click and drag to pan the popout image. Mouse Wheel Zooms the image.
-
-Program may hang when you hit Ready on a large number of files, it's just working, don't worry!
-
 Thank you for using this program!""")
         self.panel.grid(row=11, column=0, columnspan=200,
                         rowspan=200, sticky="NSEW")
@@ -186,13 +198,12 @@ Thank you for using this program!""")
         imagegridframe = tk.Frame(self.toppane)
         imagegridframe.grid(row=0, column=1, sticky="NSEW")
         self.imagegrid = tk.Text(
-            imagegridframe, wrap='word', borderwidth=0, highlightthickness=0, state="disabled")
+            imagegridframe, wrap='word', borderwidth=0, highlightthickness=0, state="disabled",background='#a9a9a9')
         vbar = tk.Scrollbar(imagegridframe, orient='vertical',
                             command=self.imagegrid.yview)
         vbar.grid(row=0, column=1, sticky='ns')
         self.imagegrid.configure(yscrollcommand=vbar.set)
         # set background color to a darker grey
-        self.imagegrid['background'] = '#a9a9a9'
         self.imagegrid.grid(row=0, column=0, sticky="NSEW")
         imagegridframe.rowconfigure(0, weight=1)
         imagegridframe.columnconfigure(0, weight=1)
@@ -206,33 +217,9 @@ Thank you for using this program!""")
         self.rowconfigure(0, weight=10)
         self.rowconfigure(1, weight=0)
         self.protocol("WM_DELETE_WINDOW", self.closeprogram)
-        self.winfo_toplevel().title("Simple Image Sorter v2.0")
+        self.winfo_toplevel().title("Simple Image Sorter v2.1")
         self.leftui.bind("<Configure>", self.buttonResizeOnWindowResize)
         self.buttonResizeOnWindowResize("a")
-        # options frame
-        optionsframe = tk.Frame(self.leftui)
-        # have this just get checked when setting dstination then hide or not
-        self.hideonassignvar = tk.BooleanVar()
-        self.hideonassignvar.set(True)
-        hideonassign = tk.Checkbutton(optionsframe, text="Hide Images Upon assigning destination",
-                                      variable=self.hideonassignvar, onvalue=True, offvalue=False)
-        hideonassign.grid(column=0, row=0)
-        self.hidemovedvar = tk.BooleanVar()
-        self.showhiddenvar = tk.BooleanVar()
-        showhidden = tk.Checkbutton(optionsframe, text="Show Hidden Images",
-                                    variable=self.showhiddenvar, onvalue=True, offvalue=False,command=self.showhiddensquares)
-        showhidden.grid(column=0, row=1, sticky="W")
-        hidemoved = tk.Checkbutton(optionsframe, text="Hide Moved",
-                                   variable=self.hidemovedvar, onvalue=True, offvalue=False, command=self.hidemoved)
-        hidemoved.grid(column=1, row=1)
-        self.showhidden = showhidden
-        self.hideonassign = hideonassign
-        hideonassign.grid(column=1, row=0)
-        moveallbutton = tk.Button(
-            optionsframe, text="Move All", command=fileManager.moveall)
-        moveallbutton.grid(column=0, row=2, columnspan=3, sticky="EW")
-
-        self.optionsframe = optionsframe
 
     def showall(self):
         for x in self.fileManager.imagelist:
@@ -269,22 +256,24 @@ Thank you for using this program!""")
         except:
             pass
 
-    def makegridsquare(self, parent, imageobj):
+    def makegridsquare(self, parent, imageobj,setguidata):
         try:
             #buffer = pyvips.Image.new_from_file(imageobj.thumbnail)
             #img= ImageTk.PhotoImage(Image.frombuffer("L",[buffer.width,buffer.height],buffer.write_to_memory()))
             #Wish I knew how to make that work properly^
             #
-            img = ImageTk.PhotoImage(Image.open(imageobj.thumbnail))
+            if setguidata:
+                img = ImageTk.PhotoImage(Image.open(imageobj.thumbnail))
+            else:
+                img = imageobj.guidata['img']
             frame = tk.Frame(parent, width=self.thumbnailsize +
                              14, height=self.thumbnailsize+24)
             canvas = tk.Canvas(frame, width=self.thumbnailsize,
                                height=self.thumbnailsize)
             canvas.create_image(
                 self.thumbnailsize/2, self.thumbnailsize/2, anchor="center", image=img)
-
             text = textwrap.fill(
-                imageobj.name, floor(self.thumbnailsize/12))
+                imageobj.name.get(), floor(self.thumbnailsize/12))
             check = Checkbutton(frame, text=text, variable=imageobj.checked)
             canvas.grid(column=0, row=0, sticky="NSEW")
             check.grid(column=0, row=1, sticky="N")
@@ -292,14 +281,21 @@ Thank you for using this program!""")
             frame.rowconfigure(1, weight=1)
             frame.config(height=self.thumbnailsize+12)
             # save the data to the image obj to both store a reference and for later manipulation
-            imageobj.setguidata(
-                {"img": img, "frame": frame, "canvas":canvas, "check": check, "show": True})
+            if(setguidata):
+                imageobj.setguidata(
+                    {"img": img, "frame": frame, "canvas":canvas, "check": check, "show": True})
             # anything other than rightclicking toggles the checkbox, as we want.
             canvas.bind("<Button-1>", partial(bindhandler, check, "invoke"))
             canvas.bind(
-                "<Button-3>", partial(self.displayimage, imageobj.path))
-            check.bind("<Button-3>", partial(self.displayimage, imageobj.path))
-            self.gridsquarelist.append(frame)
+                "<Button-3>", partial(self.displayimage, imageobj))
+            check.bind("<Button-3>", partial(self.displayimage, imageobj))
+            #bind scroll wheel
+            canvas.bind("<MouseWheel>", partial(
+                bindhandler, parent, "scroll"))
+            frame.bind("<MouseWheel>", partial(
+                bindhandler, self.imagegrid, "scroll"))
+            check.bind("<MouseWheel>", partial(
+                bindhandler, self.imagegrid, "scroll"))
         except Exception as e:
             logging.error(e)
 
@@ -307,18 +303,18 @@ Thank you for using this program!""")
 
     def displaygrid(self, imagelist, range):
         for i in range:
-            gridsquare = self.makegridsquare(self.imagegrid, imagelist[i])
+            gridsquare = self.makegridsquare(self.imagegrid, imagelist[i],True)
+            self.gridsquarelist.append(gridsquare)
             self.imagegrid.window_create("insert", window=gridsquare)
             gridsquare.configure(height=self.thumbnailsize+10)
-            gridsquare.bind_all("<MouseWheel>", partial(
-                bindhandler, self.imagegrid, "scroll"))
 
     def buttonResizeOnWindowResize(self, b=""):
         if len(self.buttons) > 0:
             for x in self.buttons:
                 x.configure(wraplength=(self.buttons[0].winfo_width()-1))
 
-    def displayimage(self, path, a):
+    def displayimage(self, imageobj, a):
+        path = imageobj.path
         logging.info("Displaying:" + path)
         imagewindow = tk.Toplevel()
         imagewindow.rowconfigure(0, weight=1)
@@ -327,14 +323,21 @@ Thank you for using this program!""")
         imagewindow.geometry(str(
             int(self.winfo_screenwidth()*0.80)) + "x" + str(self.winfo_screenheight()-120))
         imagewindow.geometry("+365+60")
-        self.winfo_toplevel().title("SIS: " + path)
         imageframe = CanvasImage(imagewindow, path)
         # takes the smaller scale (since that will be the limiting factor) and rescales the image to that so it fits the frame.
         imageframe.rescale(min(imagewindow.winfo_width(
         )/imageframe.imwidth, imagewindow.winfo_height()/imageframe.imheight))
-        imageframe.grid(column=0, row=0,)
+        imageframe.grid(column=0, row=1)
         imagewindow.bind(
             "<Button-3>", partial(bindhandler, imagewindow, "destroy"))
+        renameframe = tk.Frame(imagewindow)
+        renameframe.columnconfigure(1,weight=1)
+        namelabel = tk.Label(renameframe,text="Image Name:")
+        namelabel.grid(column=0,row=0,sticky="W")
+        nameentry=tk.Entry(renameframe, textvariable=imageobj.name)
+        nameentry.grid(row=0,column=1,sticky="EW")
+        
+        renameframe.grid(column=0,row=0,sticky="EW")
         self.imagewindow = imagewindow
 
     def folderselect(self, _type):
@@ -368,7 +371,6 @@ Thank you for using this program!""")
                 if(itern < len(hotkeys)):
                     newbut = tk.Button(buttonframe, text=hotkeys[itern] + ": " + x['name'], command=partial(
                         self.fileManager.setDestination, x), anchor="w", wraplength=(self.leftui.winfo_width()/columns)-1)
-                    random.seed(x['name'])
                     self.bind_all(hotkeys[itern], partial(
                         self.fileManager.setDestination, x))
                     fg = 'white'
@@ -388,7 +390,6 @@ Thank you for using this program!""")
             if guirow > ((self.leftui.winfo_height()/35)-2):
                 guirow = 1
                 guicol += 1
-            x["color"] = color
             newbut.grid(row=guirow, column=guicol, sticky="nsew")
             newbut.bind("<Button-3>", partial(self.showthisdest, x))
             newbut.dest = x
@@ -397,6 +398,36 @@ Thank you for using this program!""")
         sdpEntry.config(state=tk.DISABLED)
         ddpEntry.config(state=tk.DISABLED)
         self.entryframe.grid_remove()
+        # options frame
+        optionsframe = tk.Frame(self.leftui)
+        # have this just get checked when setting dstination then hide or not
+        hideonassign = tk.Checkbutton(optionsframe, text="Hide Images Upon assigning destination",
+                                      variable=self.hideonassignvar, onvalue=True, offvalue=False)
+        hideonassign.grid(column=0, row=0)
+
+        showhidden = tk.Checkbutton(optionsframe, text="Show Hidden Images",
+                                    variable=self.showhiddenvar, onvalue=True, offvalue=False,command=self.showhiddensquares)
+        showhidden.grid(column=0, row=1, sticky="W")
+        hidemoved = tk.Checkbutton(optionsframe, text="Hide Moved",
+                                   variable=self.hidemovedvar, onvalue=True, offvalue=False, command=self.hidemoved)
+        hidemoved.grid(column=1, row=1)
+        self.showhidden = showhidden
+        self.hideonassign = hideonassign
+        validation=optionsframe.register(isnumber)
+        squaresperpageentry = tk.Entry(optionsframe,textvariable=self.squaresperpage, validate="key", validatecommand=(validation, '%S'))
+        for n in range(0,itern):
+            squaresperpageentry.unbind_all(hotkeys[itern])
+        addpagebut = tk.Button(optionsframe,text="Add Files",command=self.addpage)
+        squaresperpageentry.grid(row=2,column=0,sticky="E")
+        addpagebut.grid(row=2,column=1,sticky="EW")
+        hideonassign.grid(column=1, row=0)
+        moveallbutton = tk.Button(
+            optionsframe, text="Move All", command=self.fileManager.moveall)
+        moveallbutton.grid(column=0, row=3, columnspan=3, sticky="EW")
+        optionsframe.columnconfigure(0,weight=1)
+        optionsframe.columnconfigure(1,weight=3)
+        optionsframe.columnconfigure(2,weight=2)
+        self.optionsframe = optionsframe
         self.optionsframe.grid(row=0, column=0, sticky="w")
     
     #todo: make 'moved' and 'assigned' lists so the show all etc just has to iterate over those.
@@ -424,11 +455,21 @@ Thank you for using this program!""")
                 self.imagegrid.window_create("insert", window=x.guidata["frame"])
                 x.guidata["frame"].grid()
 
-    def showthisdest(self, dest,a,b):
-        self.hideallsquares()
+    def showthisdest(self, dest,*args):
+        destwindow = tk.Toplevel()
+        destwindow.winfo_toplevel().title(
+            "Files designated for"+ dest['path'])
+        destgrid = tk.Text(destwindow, wrap='word', borderwidth=0, highlightthickness=0, state="disabled",background='#a9a9a9')
+        destgrid.grid(row=0,column=0,sticky="NSEW")
+        destwindow.columnconfigure(0,weight=1)
+        destwindow.rowconfigure(0,weight=1)
+        vbar = tk.Scrollbar(destwindow, orient='vertical',
+                            command=destgrid.yview)
+        vbar.grid(row=0, column=1, sticky='ns')
         for x in self.fileManager.imagelist:
-            if x.dest == dest:
-                self.imagegrid.window_create("insert", window=x.guidata["frame"])
+            if x.dest == dest['path']:
+                newframe= self.makegridsquare(destgrid,x,False)
+                destgrid.window_create("insert", window=newframe)
 
     def hidemoved(self):
         if self.hidemovedvar.get():
@@ -438,10 +479,18 @@ Thank you for using this program!""")
                         self.imagegrid.window_configure(x.guidata["frame"], window='')
                     except Exception as e:
                         logging("Error: "+e)
-
+    
+    def addpage(self,*args):
+        filelist = self.fileManager.imagelist
+        if len(self.gridsquarelist) < len(filelist)-1:
+            listmax= min(len(self.gridsquarelist)+self.squaresperpage.get(),len(filelist)-1)
+            ran = range(len(self.gridsquarelist),listmax)
+            sublist= filelist[ran[0]:listmax]
+            self.fileManager.generatethumbnails(sublist)
+            self.displaygrid(self.fileManager.imagelist,ran)
 
 class SortImages:
-    imagelist = deque()
+    imagelist = []
     destinations = []
     exclude = []
     thumbnailsize = 256
@@ -479,6 +528,8 @@ class SortImages:
                 self.gui.ddpEntry.delete(0, len(self.gui.ddpEntry.get()))
                 self.gui.sdpEntry.insert(0, jprefs["srcpath"])
                 self.gui.ddpEntry.insert(0, jprefs["despath"])
+                if "squaresperpage" in jprefs:
+                    self.gui.squaresperpage.set(jprefs["squaresperpage"])
             if len(hotkeys) > 1:
                 self.gui.hotkeys = hotkeys
         except Exception as e:
@@ -531,12 +582,16 @@ class SortImages:
             self.sdp = gui.sdpEntry.get()
             self.ddp = gui.ddpEntry.get()
             logging.info("main class setup")
-            self.setup(self.sdp, self.ddp)
+            self.setup(self.ddp)
             logging.info("GUI setup")
             gui.guisetup(self.destinations)
             logging.info("displaying first image grid")
             #todo add this as a config option
-            gui.displaygrid(self.imagelist, range(0, len(self.imagelist)))
+            self.walk(self.sdp)
+            listmax=min(gui.squaresperpage.get(),len(self.imagelist))
+            sublist = self.imagelist[0:listmax]
+            self.generatethumbnails(sublist)
+            gui.displaygrid(self.imagelist, range(0, gui.squaresperpage.get()))
         elif gui.sdpEntry.get() == gui.ddpEntry.get():
             gui.sdpEntry.delete(0, len(gui.sdpEntry.get()))
             gui.ddpEntry.delete(0, len(gui.ddpEntry.get()))
@@ -548,15 +603,15 @@ class SortImages:
             gui.sdpEntry.insert(0, "ERROR INVALID PATH")
             gui.ddpEntry.insert(0, "ERROR INVALID PATH")
 
-    def setup(self, src, dest):
+    def setup(self,dest):
         # scan the destination
         self.destinations = []
         with os.scandir(dest) as it:
             for entry in it:
                 if entry.is_dir():
+                    random.seed(entry.name)
                     self.destinations.append(
                         {'name': entry.name, 'path': entry.path, 'color': randomColor()})
-        self.generatethumbnails(self.walk(src))
 
     def makethumb(self, imagefile):
         im = pyvips.Image.new_from_file(imagefile.path,)
