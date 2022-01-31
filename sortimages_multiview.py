@@ -13,7 +13,6 @@ import random
 from math import floor, sqrt
 from tkinter import Grid, Scrollbar, filedialog as tkFileDialog
 import tkinter.font as tkfont
-from collections import deque
 from canvasimage import CanvasImage
 import concurrent.futures as concurrent
 import logging
@@ -27,7 +26,7 @@ class Imagefile:
     moved = False
 
     def __init__(self, name, path) -> None:
-        self.name=tk.StringVar()
+        self.name = tk.StringVar()
         self.name.set(name)
         self.path = path
         self.checked = tk.IntVar(value=0)
@@ -41,11 +40,13 @@ class Imagefile:
                 self.guidata["frame"].configure(
                     highlightbackground="green", highlightthickness=2)
                 self.path = os.path.join(destpath, self.name.get())
-                returnstr = ("Moved:" + self.name.get() + " -> " + destpath + "\n")
+                returnstr = ("Moved:" + self.name.get() +
+                             " -> " + destpath + "\n")
                 destpath = ""
                 return returnstr
             except Exception as e:
-                logging.error("Error moving: %s . File: %s", e, self.name.get())
+                logging.error("Error moving: %s . File: %s",
+                              e, self.name.get())
                 return ("Error moving: %s . File: %s", e, self.name.get())
 
     def setid(self, id):
@@ -56,7 +57,8 @@ class Imagefile:
 
     def setdest(self, dest):
         self.dest = dest["path"]
-        logging.debug("Set destination of %s to %s", self.name.get(), self.dest)
+        logging.debug("Set destination of %s to %s",
+                      self.name.get(), self.dest)
 
 
 def disable_event():
@@ -86,8 +88,10 @@ def luminance(hexin):
     else:
         return 'dark'
 
+
 def isnumber(char):
     return char.isdigit()
+
 
 def saveprefs(manager, gui):
     if os.path.exists(gui.sdpEntry.get()):
@@ -98,8 +102,7 @@ def saveprefs(manager, gui):
         ddp = gui.ddpEntry.get()
     else:
         ddp = ""
-    save = {"srcpath": sdp, "despath": ddp, "exclude": manager.exclude, "hotkeys": gui.hotkeys,
-            "thumbnailgrid": gui.thumbnailgrid, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads,"hideonassign":gui.hideonassignvar.get(),"hidemoved":gui.hidemovedvar.get(),"squaresperpage":gui.squaresperpage.get()}
+    save = {"srcpath": sdp, "despath": ddp, "exclude": manager.exclude, "hotkeys": gui.hotkeys, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads, "hideonassign": gui.hideonassignvar.get(), "hidemoved": gui.hidemovedvar.get(), "squaresperpage": gui.squaresperpage.get()}
     try:
         with open("prefs.json", "w+") as savef:
             json.dump(save, savef)
@@ -120,18 +123,16 @@ def bindhandler(*args):
 
 
 class GUIManager(tk.Tk):
-    thumbnailgrid = [3, 3]
     thumbnailsize = 256
-
     def __init__(self, fileManager) -> None:
         super().__init__()
-        #variable initiation
+        # variable initiation
         self.gridsquarelist = []
         self.hideonassignvar = tk.BooleanVar()
         self.hideonassignvar.set(True)
         self.hidemovedvar = tk.BooleanVar()
         self.showhiddenvar = tk.BooleanVar()
-        self.squaresperpage=tk.IntVar()
+        self.squaresperpage = tk.IntVar()
         self.squaresperpage.set(120)
         # store the reference to the file manager class.
         self.fileManager = fileManager
@@ -198,12 +199,11 @@ Thank you for using this program!""")
         imagegridframe = tk.Frame(self.toppane)
         imagegridframe.grid(row=0, column=1, sticky="NSEW")
         self.imagegrid = tk.Text(
-            imagegridframe, wrap='word', borderwidth=0, highlightthickness=0, state="disabled",background='#a9a9a9')
+            imagegridframe, wrap='word', borderwidth=0, highlightthickness=0, state="disabled", background='#a9a9a9')
         vbar = tk.Scrollbar(imagegridframe, orient='vertical',
                             command=self.imagegrid.yview)
         vbar.grid(row=0, column=1, sticky='ns')
         self.imagegrid.configure(yscrollcommand=vbar.set)
-        # set background color to a darker grey
         self.imagegrid.grid(row=0, column=0, sticky="NSEW")
         imagegridframe.rowconfigure(0, weight=1)
         imagegridframe.columnconfigure(0, weight=1)
@@ -256,12 +256,11 @@ Thank you for using this program!""")
         except:
             pass
 
-    def makegridsquare(self, parent, imageobj,setguidata):
+    def makegridsquare(self, parent, imageobj, setguidata):
         try:
             #buffer = pyvips.Image.new_from_file(imageobj.thumbnail)
             #img= ImageTk.PhotoImage(Image.frombuffer("L",[buffer.width,buffer.height],buffer.write_to_memory()))
             # Wish I knew how to make that work properly^
-            #
             if setguidata:
                 img = ImageTk.PhotoImage(Image.open(imageobj.thumbnail))
             else:
@@ -280,16 +279,14 @@ Thank you for using this program!""")
             frame.rowconfigure(0, weight=4)
             frame.rowconfigure(1, weight=1)
             frame.config(height=self.thumbnailsize+12)
-            # save the data to the image obj to both store a reference and for later manipulation
-            if(setguidata):
+            if(setguidata):  # save the data to the image obj to both store a reference and for later manipulation
                 imageobj.setguidata(
-                    {"img": img, "frame": frame, "canvas":canvas, "check": check, "show": True})
+                    {"img": img, "frame": frame, "canvas": canvas, "check": check, "show": True})
             # anything other than rightclicking toggles the checkbox, as we want.
             canvas.bind("<Button-1>", partial(bindhandler, check, "invoke"))
             canvas.bind(
                 "<Button-3>", partial(self.displayimage, imageobj))
             check.bind("<Button-3>", partial(self.displayimage, imageobj))
-            #bind scroll wheel
             canvas.bind("<MouseWheel>", partial(
                 bindhandler, parent, "scroll"))
             frame.bind("<MouseWheel>", partial(
@@ -303,7 +300,8 @@ Thank you for using this program!""")
 
     def displaygrid(self, imagelist, range):
         for i in range:
-            gridsquare = self.makegridsquare(self.imagegrid, imagelist[i],True)
+            gridsquare = self.makegridsquare(
+                self.imagegrid, imagelist[i], True)
             self.gridsquarelist.append(gridsquare)
             self.imagegrid.window_create("insert", window=gridsquare)
             gridsquare.configure(height=self.thumbnailsize+10)
@@ -331,13 +329,13 @@ Thank you for using this program!""")
         imagewindow.bind(
             "<Button-3>", partial(bindhandler, imagewindow, "destroy"))
         renameframe = tk.Frame(imagewindow)
-        renameframe.columnconfigure(1,weight=1)
-        namelabel = tk.Label(renameframe,text="Image Name:")
-        namelabel.grid(column=0,row=0,sticky="W")
-        nameentry=tk.Entry(renameframe, textvariable=imageobj.name)
-        nameentry.grid(row=0,column=1,sticky="EW")
-        
-        renameframe.grid(column=0,row=0,sticky="EW")
+        renameframe.columnconfigure(1, weight=1)
+        namelabel = tk.Label(renameframe, text="Image Name:")
+        namelabel.grid(column=0, row=0, sticky="W")
+        nameentry = tk.Entry(renameframe, textvariable=imageobj.name)
+        nameentry.grid(row=0, column=1, sticky="EW")
+
+        renameframe.grid(column=0, row=0, sticky="EW")
         self.imagewindow = imagewindow
 
     def folderselect(self, _type):
@@ -406,27 +404,29 @@ Thank you for using this program!""")
         hideonassign.grid(column=0, row=0)
 
         showhidden = tk.Checkbutton(optionsframe, text="Show Hidden Images",
-                                    variable=self.showhiddenvar, onvalue=True, offvalue=False,command=self.showhiddensquares)
+                                    variable=self.showhiddenvar, onvalue=True, offvalue=False, command=self.showhiddensquares)
         showhidden.grid(column=0, row=1, sticky="W")
         hidemoved = tk.Checkbutton(optionsframe, text="Hide Moved",
                                    variable=self.hidemovedvar, onvalue=True, offvalue=False, command=self.hidemoved)
         hidemoved.grid(column=1, row=1)
         self.showhidden = showhidden
         self.hideonassign = hideonassign
-        validation=optionsframe.register(isnumber)
-        squaresperpageentry = tk.Entry(optionsframe,textvariable=self.squaresperpage, validate="key", validatecommand=(validation, '%S'))
-        for n in range(0,itern):
+        validation = optionsframe.register(isnumber)
+        squaresperpageentry = tk.Entry(
+            optionsframe, textvariable=self.squaresperpage, validate="key", validatecommand=(validation, '%S'))
+        for n in range(0, itern):
             squaresperpageentry.unbind_all(hotkeys[itern])
-        addpagebut = tk.Button(optionsframe,text="Add Files",command=self.addpage)
-        squaresperpageentry.grid(row=2,column=0,sticky="E")
-        addpagebut.grid(row=2,column=1,sticky="EW")
+        addpagebut = tk.Button(
+            optionsframe, text="Add Files", command=self.addpage)
+        squaresperpageentry.grid(row=2, column=0, sticky="E")
+        addpagebut.grid(row=2, column=1, sticky="EW")
         hideonassign.grid(column=1, row=0)
         moveallbutton = tk.Button(
             optionsframe, text="Move All", command=self.fileManager.moveall)
         moveallbutton.grid(column=0, row=3, columnspan=3, sticky="EW")
-        optionsframe.columnconfigure(0,weight=1)
-        optionsframe.columnconfigure(1,weight=3)
-        optionsframe.columnconfigure(2,weight=2)
+        optionsframe.columnconfigure(0, weight=1)
+        optionsframe.columnconfigure(1, weight=3)
+        optionsframe.columnconfigure(2, weight=2)
         self.optionsframe = optionsframe
         self.optionsframe.grid(row=0, column=0, sticky="w")
 
@@ -458,20 +458,21 @@ Thank you for using this program!""")
                     "insert", window=x.guidata["frame"])
                 x.guidata["frame"].grid()
 
-    def showthisdest(self, dest,*args):
+    def showthisdest(self, dest, *args):
         destwindow = tk.Toplevel()
         destwindow.winfo_toplevel().title(
-            "Files designated for"+ dest['path'])
-        destgrid = tk.Text(destwindow, wrap='word', borderwidth=0, highlightthickness=0, state="disabled",background='#a9a9a9')
-        destgrid.grid(row=0,column=0,sticky="NSEW")
-        destwindow.columnconfigure(0,weight=1)
-        destwindow.rowconfigure(0,weight=1)
+            "Files designated for" + dest['path'])
+        destgrid = tk.Text(destwindow, wrap='word', borderwidth=0,
+                           highlightthickness=0, state="disabled", background='#a9a9a9')
+        destgrid.grid(row=0, column=0, sticky="NSEW")
+        destwindow.columnconfigure(0, weight=1)
+        destwindow.rowconfigure(0, weight=1)
         vbar = tk.Scrollbar(destwindow, orient='vertical',
                             command=destgrid.yview)
         vbar.grid(row=0, column=1, sticky='ns')
         for x in self.fileManager.imagelist:
             if x.dest == dest['path']:
-                newframe= self.makegridsquare(destgrid,x,False)
+                newframe = self.makegridsquare(destgrid, x, False)
                 destgrid.window_create("insert", window=newframe)
 
     def hidemoved(self):
@@ -483,15 +484,17 @@ Thank you for using this program!""")
                             x.guidata["frame"], window='')
                     except Exception as e:
                         logging("Error: "+e)
-    
-    def addpage(self,*args):
+
+    def addpage(self, *args):
         filelist = self.fileManager.imagelist
         if len(self.gridsquarelist) < len(filelist)-1:
-            listmax= min(len(self.gridsquarelist)+self.squaresperpage.get(),len(filelist)-1)
-            ran = range(len(self.gridsquarelist),listmax)
-            sublist= filelist[ran[0]:listmax]
+            listmax = min(len(self.gridsquarelist) +
+                          self.squaresperpage.get(), len(filelist)-1)
+            ran = range(len(self.gridsquarelist), listmax)
+            sublist = filelist[ran[0]:listmax]
             self.fileManager.generatethumbnails(sublist)
-            self.displaygrid(self.fileManager.imagelist,ran)
+            self.displaygrid(self.fileManager.imagelist, ran)
+
 
 class SortImages:
     imagelist = []
@@ -514,8 +517,6 @@ class SortImages:
                 jprefs = json.loads(jdata)
                 if 'hotkeys' in jprefs:
                     hotkeys = jprefs["hotkeys"]
-                if 'thumbnailgrid' in jprefs:
-                    self.gui.thumbnailgrid = jprefs["thumbnailgrid"]
                 if 'thumbnailsize' in jprefs:
                     self.gui.thumbnailsize = jprefs["thumbnailsize"]
                     self.thumbnailsize = jprefs["thumbnailsize"]
@@ -588,9 +589,9 @@ class SortImages:
             logging.info("GUI setup")
             gui.guisetup(self.destinations)
             logging.info("displaying first image grid")
-            #todo add this as a config option
+            # todo add this as a config option
             self.walk(self.sdp)
-            listmax=min(gui.squaresperpage.get(),len(self.imagelist))
+            listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             sublist = self.imagelist[0:listmax]
             self.generatethumbnails(sublist)
             gui.displaygrid(self.imagelist, range(0, gui.squaresperpage.get()))
@@ -605,7 +606,7 @@ class SortImages:
             gui.sdpEntry.insert(0, "ERROR INVALID PATH")
             gui.ddpEntry.insert(0, "ERROR INVALID PATH")
 
-    def setup(self,dest):
+    def setup(self, dest):
         # scan the destination
         self.destinations = []
         with os.scandir(dest) as it:

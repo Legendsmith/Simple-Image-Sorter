@@ -1,2 +1,2 @@
 cd %~dp0
-pyinstaller sortimages_multiview.py
+pyinstaller sortimages_multiview.py --noconfirm
