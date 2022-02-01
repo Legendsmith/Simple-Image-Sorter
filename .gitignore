@@ -135,3 +135,4 @@ libgobject-2.0-0.dll
 libvips-42.dll
 libvips-cpp-42.dll
 session.json
+*.json
