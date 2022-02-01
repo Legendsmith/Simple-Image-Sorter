@@ -3,6 +3,7 @@ from sys import exit
 import textwrap
 from shutil import move as shmove
 import tkinter as tk
+from tkinter.messagebox import askokcancel
 import tkinter.scrolledtext as tkst
 from tkinter.ttk import Panedwindow, Checkbutton
 from PIL import Image, ImageTk
@@ -11,7 +12,7 @@ from math import floor
 import json
 import random
 from math import floor, sqrt
-from tkinter import Grid, Scrollbar, filedialog as tkFileDialog
+from tkinter import filedialog as tkFileDialog
 import tkinter.font as tkfont
 from canvasimage import CanvasImage
 import concurrent.futures as concurrent
@@ -19,20 +20,18 @@ import logging
 from hashlib import md5
 import pyvips
 
-
 class Imagefile:
     path = ""
     dest = ""
     moved = False
-
     def __init__(self, name, path) -> None:
         self.name = tk.StringVar()
         self.name.set(name)
         self.path = path
-        self.checked = tk.IntVar(value=0)
+        self.checked = tk.BooleanVar(value=False)
 
     def move(self) -> str:
-        destpath = self.dest['path']
+        destpath = self.dest
         if destpath != "" and os.path.isdir(destpath):
             try:
                 shmove(self.path, os.path.join(destpath, self.name.get()))
@@ -89,9 +88,6 @@ def luminance(hexin):
         return 'dark'
 
 
-def isnumber(char):
-    return char.isdigit()
-
 
 def saveprefs(manager, gui):
     if os.path.exists(gui.sdpEntry.get()):
@@ -102,13 +98,17 @@ def saveprefs(manager, gui):
         ddp = gui.ddpEntry.get()
     else:
         ddp = ""
-    save = {"srcpath": sdp, "despath": ddp, "exclude": manager.exclude, "hotkeys": gui.hotkeys, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads, "hideonassign": gui.hideonassignvar.get(), "hidemoved": gui.hidemovedvar.get(), "squaresperpage": gui.squaresperpage.get()}
+    save = {"srcpath": sdp, "despath": ddp, "exclude": manager.exclude, "hotkeys": gui.hotkeys, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads, "hideonassign": gui.hideonassignvar.get(), "hidemoved": gui.hidemovedvar.get(), "squaresperpage": gui.squaresperpage.get(), "geometry":gui.winfo_geometry(),"imagewindowgeometry":gui.imagewindowgeometry}
     try:
         with open("prefs.json", "w+") as savef:
             json.dump(save, savef)
             logging.debug(save)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning(("failed to save prefs, error: %s", e))
+    try:
+        manager.savesession()
+    except Exception as e:
+        logging.warning(("failed to save session, error: %s", e))
 
 
 def bindhandler(*args):
@@ -134,6 +134,7 @@ class GUIManager(tk.Tk):
         self.showhiddenvar = tk.BooleanVar()
         self.squaresperpage = tk.IntVar()
         self.squaresperpage.set(120)
+        self.imagewindowgeometry=str(int(self.winfo_screenwidth()*0.80)) + "x" + str(self.winfo_screenheight()-120)+"+365+60"
         # store the reference to the file manager class.
         self.fileManager = fileManager
         self.geometry(str(self.winfo_screenwidth()-5)+"x" +
@@ -174,8 +175,8 @@ Thank you for using this program!""")
         self.buttonframe.columnconfigure(1, weight=1)
         self.buttonframe.columnconfigure(2, weight=1)
         self.entryframe = tk.Frame(master=self.leftui)
-        self.sdpEntry = tk.Entry(self.entryframe)  # scandirpathEntry
-        self.ddpEntry = tk.Entry(self.entryframe)  # dest dir path entry
+        self.sdpEntry = tk.Entry(self.entryframe,takefocus=False)  # scandirpathEntry
+        self.ddpEntry = tk.Entry(self.entryframe,takefocus=False)  # dest dir path entry
 
         self.sdplabel = tk.Button(
             self.entryframe, text="Source Folder:", command=partial(self.folderselect, "src"))
@@ -183,7 +184,8 @@ Thank you for using this program!""")
             self.entryframe, text="Destination Folder:", command=partial(self.folderselect, "des"))
         self.activebutton = tk.Button(
             self.entryframe, text="Ready", command=partial(fileManager.validate, self))
-
+        self.loadbutton = tk.Button(self.entryframe,text="Load Last Session",command=self.fileManager.loadsession)
+        self.loadbutton.grid(row=3,column=2,sticky='ew')
         self.sdplabel.grid(row=0, column=0, sticky="e")
         self.sdpEntry.grid(row=0, column=1, sticky="w")
         self.ddplabel.grid(row=1, column=0, sticky="e")
@@ -217,10 +219,14 @@ Thank you for using this program!""")
         self.rowconfigure(0, weight=10)
         self.rowconfigure(1, weight=0)
         self.protocol("WM_DELETE_WINDOW", self.closeprogram)
-        self.winfo_toplevel().title("Simple Image Sorter: Multiview Edition v2.1")
+        self.winfo_toplevel().title("Simple Image Sorter: Multiview Edition v2.2")
         self.leftui.bind("<Configure>", self.buttonResizeOnWindowResize)
         self.buttonResizeOnWindowResize("a")
 
+    def isnumber(self,char):
+        return char.isdigit()
+    
+    
     def showall(self):
         for x in self.fileManager.imagelist:
             if x.guidata["show"] == False:
@@ -231,7 +237,6 @@ Thank you for using this program!""")
     def closeprogram(self):
         saveprefs(self.fileManager, self)
         self.destroy()
-        # shutil.rmtree("data",True)
         exit(0)
 
     def excludeshow(self):
@@ -257,23 +262,24 @@ Thank you for using this program!""")
             pass
 
     def makegridsquare(self, parent, imageobj, setguidata):
+        frame = tk.Frame(parent, width=self.thumbnailsize + 14, height=self.thumbnailsize+24)
         try:
-            #buffer = pyvips.Image.new_from_file(imageobj.thumbnail)
-            #img= ImageTk.PhotoImage(Image.frombuffer("L",[buffer.width,buffer.height],buffer.write_to_memory()))
-            # Wish I knew how to make that work properly^
             if setguidata:
-                img = ImageTk.PhotoImage(Image.open(imageobj.thumbnail))
-            else:
+                try:
+                    buffer = pyvips.Image.new_from_file(imageobj.thumbnail)
+                    img= ImageTk.PhotoImage(Image.frombuffer("RGB",[buffer.width,buffer.height],buffer.write_to_memory()))
+                except: #Pillow fallback
+                    img = ImageTk.PhotoImage(Image.open(imageobj.thumbnail))
+            else: 
                 img = imageobj.guidata['img']
-            frame = tk.Frame(parent, width=self.thumbnailsize +
-                             14, height=self.thumbnailsize+24)
+            
             canvas = tk.Canvas(frame, width=self.thumbnailsize,
                                height=self.thumbnailsize)
             canvas.create_image(
                 self.thumbnailsize/2, self.thumbnailsize/2, anchor="center", image=img)
             text = textwrap.fill(
                 imageobj.name.get(), floor(self.thumbnailsize/12))
-            check = Checkbutton(frame, text=text, variable=imageobj.checked)
+            check = Checkbutton(frame, text=text, variable=imageobj.checked,onvalue=True, offvalue=False)
             canvas.grid(column=0, row=0, sticky="NSEW")
             check.grid(column=0, row=1, sticky="N")
             frame.rowconfigure(0, weight=4)
@@ -295,7 +301,6 @@ Thank you for using this program!""")
                 bindhandler, self.imagegrid, "scroll"))
         except Exception as e:
             logging.error(e)
-
         return frame
 
     def displaygrid(self, imagelist, range):
@@ -313,14 +318,15 @@ Thank you for using this program!""")
 
     def displayimage(self, imageobj, a):
         path = imageobj.path
-        logging.info("Displaying:" + path)
-        imagewindow = tk.Toplevel()
+        if hasattr(self, 'imagewindow'):
+            self.imagewindow.destroy()
+        
+        self.imagewindow = tk.Toplevel()
+        imagewindow = self.imagewindow
         imagewindow.rowconfigure(1, weight=1)
         imagewindow.columnconfigure(0, weight=1)
         imagewindow.wm_title("Image: " + path)
-        imagewindow.geometry(str(
-            int(self.winfo_screenwidth()*0.80)) + "x" + str(self.winfo_screenheight()-120))
-        imagewindow.geometry("+365+60")
+        imagewindow.geometry(self.imagewindowgeometry)
         imageframe = CanvasImage(imagewindow, path)
         # takes the smaller scale (since that will be the limiting factor) and rescales the image to that so it fits the frame.
         imageframe.rescale(min(imagewindow.winfo_width(
@@ -332,11 +338,15 @@ Thank you for using this program!""")
         renameframe.columnconfigure(1, weight=1)
         namelabel = tk.Label(renameframe, text="Image Name:")
         namelabel.grid(column=0, row=0, sticky="W")
-        nameentry = tk.Entry(renameframe, textvariable=imageobj.name)
+        nameentry = tk.Entry(renameframe, textvariable=imageobj.name,takefocus=False)
         nameentry.grid(row=0, column=1, sticky="EW")
 
         renameframe.grid(column=0, row=0, sticky="EW")
-        self.imagewindow = imagewindow
+        imagewindow.protocol("WM_DELETE_WINDOW", self.saveimagewindowgeo)
+    def saveimagewindowgeo(self):
+        self.imagewindowgeometry = self.imagewindow.winfo_geometry()
+    
+        
 
     def folderselect(self, _type):
         folder = tkFileDialog.askdirectory()
@@ -361,6 +371,7 @@ Thank you for using this program!""")
         guicol = 0
         itern = 0
         smallfont = tkfont.Font(family='Helvetica', size=10)
+        columns=2
         if len(destinations) > int((self.leftui.winfo_height()/15)-4):
             columns = 3
         for x in destinations:
@@ -368,8 +379,8 @@ Thank you for using this program!""")
             if x['name'] != "SKIP" and x['name'] != "BACK":
                 if(itern < len(hotkeys)):
                     newbut = tk.Button(buttonframe, text=hotkeys[itern] + ": " + x['name'], command=partial(
-                        self.fileManager.setDestination, x), anchor="w", wraplength=(self.leftui.winfo_width()/columns)-1)
-                    self.bind_all(hotkeys[itern], partial(
+                        self.fileManager.setDestination, x,{"widget":None}), anchor="w", wraplength=(self.leftui.winfo_width()/columns)-1)
+                    self.bind(hotkeys[itern], partial(
                         self.fileManager.setDestination, x))
                     fg = 'white'
                     if luminance(color) == 'light':
@@ -379,18 +390,19 @@ Thank you for using this program!""")
                         newbut.configure(font=smallfont)
                 else:
                     newbut = tk.Button(buttonframe, text=x['name'], command=partial(
-                        self.fileManager.setDestination, x), anchor="w")
+                        self.fileManager.setDestination, x, {"widget":None}), anchor="w")
                 itern += 1
             newbut.config(font=("Courier", 12), width=int(
                 (self.leftui.winfo_width()/12)/columns), height=1)
             if len(x['name']) > 20:
                 newbut.config(font=smallfont)
+            newbut.dest = x
             if guirow > ((self.leftui.winfo_height()/35)-2):
                 guirow = 1
                 guicol += 1
             newbut.grid(row=guirow, column=guicol, sticky="nsew")
             newbut.bind("<Button-3>", partial(self.showthisdest, x))
-            newbut.dest = x
+            
             self.buttons.append(newbut)
             guirow += 1
         sdpEntry.config(state=tk.DISABLED)
@@ -399,23 +411,23 @@ Thank you for using this program!""")
         # options frame
         optionsframe = tk.Frame(self.leftui)
         # have this just get checked when setting dstination then hide or not
-        hideonassign = tk.Checkbutton(optionsframe, text="Hide Images Upon assigning destination",
+        hideonassign = tk.Checkbutton(optionsframe, text="Hide Assigned",
                                       variable=self.hideonassignvar, onvalue=True, offvalue=False)
-        hideonassign.grid(column=0, row=0)
+        hideonassign.grid(column=0, row=0,sticky='W')
 
         showhidden = tk.Checkbutton(optionsframe, text="Show Hidden Images",
                                     variable=self.showhiddenvar, onvalue=True, offvalue=False, command=self.showhiddensquares)
         showhidden.grid(column=0, row=1, sticky="W")
         hidemoved = tk.Checkbutton(optionsframe, text="Hide Moved",
                                    variable=self.hidemovedvar, onvalue=True, offvalue=False, command=self.hidemoved)
-        hidemoved.grid(column=1, row=1)
+        hidemoved.grid(column=1, row=1,sticky="w")
         self.showhidden = showhidden
         self.hideonassign = hideonassign
-        validation = optionsframe.register(isnumber)
+        valcmd = self.register(self.isnumber)
         squaresperpageentry = tk.Entry(
-            optionsframe, textvariable=self.squaresperpage, validate="key", validatecommand=(validation, '%S'))
+            optionsframe, textvariable=self.squaresperpage, validate="key", validatecommand=(valcmd,"%P"),takefocus=False)
         for n in range(0, itern):
-            squaresperpageentry.unbind_all(hotkeys[itern])
+            squaresperpageentry.unbind(hotkeys[n])
         addpagebut = tk.Button(
             optionsframe, text="Add Files", command=self.addpage)
         squaresperpageentry.grid(row=2, column=0, sticky="E")
@@ -423,12 +435,19 @@ Thank you for using this program!""")
         hideonassign.grid(column=1, row=0)
         moveallbutton = tk.Button(
             optionsframe, text="Move All", command=self.fileManager.moveall)
-        moveallbutton.grid(column=0, row=3, columnspan=3, sticky="EW")
+        moveallbutton.grid(column=1, row=3, sticky="EW")
+        clearallbutton = tk.Button(optionsframe, text="Clear",command=self.fileManager.clear)
+        clearallbutton.grid(row=3,column=0,sticky="EW")
         optionsframe.columnconfigure(0, weight=1)
         optionsframe.columnconfigure(1, weight=3)
         optionsframe.columnconfigure(2, weight=2)
         self.optionsframe = optionsframe
-        self.optionsframe.grid(row=0, column=0, sticky="w")
+        self.optionsframe.grid(row=0, column=0, sticky="ew")
+        self.bind_all("<Button-1>",self.setfocus)
+    
+    def setfocus(self,event):
+        event.widget.focus_set()
+
 
     # todo: make 'moved' and 'assigned' lists so the show all etc just has to iterate over those.
     def hideassignedsquare(self, imlist):
@@ -483,7 +502,7 @@ Thank you for using this program!""")
                         self.imagegrid.window_configure(
                             x.guidata["frame"], window='')
                     except Exception as e:
-                        logging("Error: "+e)
+                        logging.error("Error: "+e)
 
     def addpage(self, *args):
         filelist = self.fileManager.imagelist
@@ -535,6 +554,10 @@ class SortImages:
                 self.gui.ddpEntry.insert(0, jprefs["despath"])
                 if "squaresperpage" in jprefs:
                     self.gui.squaresperpage.set(jprefs["squaresperpage"])
+                if "imagewindowgeometry" in jprefs:
+                    self.gui.imagewindowgeometry=jprefs["imagewindowgeometry"]
+                if "geometry" in jprefs:
+                    self.gui.geometry(jprefs["geometry"])
             if len(hotkeys) > 1:
                 self.gui.hotkeys = hotkeys
         except Exception as e:
@@ -567,18 +590,66 @@ class SortImages:
                     self.imagelist.append(imgfile)
         return self.imagelist
 
-    def setDestination(self, dest):
+    def setDestination(self, *args):
         marked = []
-        for x in self.imagelist:
-            if x.checked.get() == 1:
-                marked.append(x)
-        for obj in marked:
-            obj.setdest(dest)
-            obj.guidata["frame"]['background'] = dest['color']
-            obj.guidata["canvas"]['background'] = dest['color']
-            obj.guidata["check"].invoke()
-        self.gui.hideassignedsquare(marked)
+        dest = args[0]
+        try: 
+            wid= args[1].widget
+        except AttributeError:
+            wid= args[1]["widget"]
+        if isinstance(wid, tk.Entry):
+            pass
+        else:
+            for x in self.imagelist:
+                if x.checked.get():
+                    marked.append(x)
+            for obj in marked:
+                obj.setdest(dest)
+                obj.guidata["frame"]['background'] = dest['color']
+                obj.guidata["canvas"]['background'] = dest['color']
+                obj.checked.set(False)
+            self.gui.hideassignedsquare(marked)
 
+    def savesession(self):
+        if len(self.imagelist) >0:
+
+            imagesavedata = []
+            for obj in self.imagelist:
+                if hasattr(obj,'thumbnail'):
+                    thumb=obj.thumbnail
+                else:
+                    thumb=""
+                imagesavedata.append({
+                    "name":obj.name.get(),
+                    "path" :obj.path,
+                    "checked":obj.checked.get(),
+                    "moved":obj.moved,
+                    "thumbnail":thumb
+                })
+            save={"dest":self.destinations,"imagelist":imagesavedata}
+            with open("session.json", "w+") as savef:
+                json.dump(save, savef)
+    def loadsession(self):
+        if os.path.exists("session.json") and os.path.isfile("session.json"):
+            with open("session.json", "r") as savef:
+                sdata = savef.read()
+                savedata = json.loads(sdata)
+            gui = self.gui
+            self.destinations = savedata['dest']
+            for o in savedata['imagelist']:
+                n = Imagefile(o['name'],o['path'])
+                n.checked.set(o['checked'])
+                n.moved=o['moved']
+                n.thumbnail=o['thumbnail']
+                self.imagelist.append(n)
+            listmax = min(gui.squaresperpage.get(), len(self.imagelist))
+            sublist = self.imagelist[0:listmax]
+            gui.displaygrid(self.imagelist, range(0, gui.squaresperpage.get()))
+            gui.guisetup(self.destinations)
+            gui.hidemoved()
+            gui.hideassignedsquare(sublist)
+        else:
+            logging.error("No Last Session!")
     def validate(self, gui):
         samepath = (gui.sdpEntry.get() == gui.ddpEntry.get())
         if((os.path.isdir(gui.sdpEntry.get())) and (os.path.isdir(gui.ddpEntry.get())) and not samepath):
@@ -589,7 +660,6 @@ class SortImages:
             logging.info("GUI setup")
             gui.guisetup(self.destinations)
             logging.info("displaying first image grid")
-            # todo add this as a config option
             self.walk(self.sdp)
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             sublist = self.imagelist[0:listmax]
@@ -637,10 +707,14 @@ class SortImages:
         with concurrent.ThreadPoolExecutor(max_workers=self.threads) as executor:
             executor.map(self.makethumb, images)
         logging.info("Finished making thumbnails")
+    def clear(self,*args):
+        if askokcancel("Confirm","Really clear your selection?"):
+            for x in self.imagelist:
+                x.checked.set(False)
 
 
 # Run Program
 if __name__ == '__main__':
     format = "%(asctime)s: %(message)s"
-    logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
+    logging.basicConfig(format=format, level=logging.WARNING, datefmt="%H:%M:%S")
     mainclass = SortImages()
