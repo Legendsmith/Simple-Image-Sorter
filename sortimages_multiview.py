@@ -39,6 +39,7 @@ class Imagefile:
             try:
                 shmove(self.path, os.path.join(destpath, self.name.get()))
                 self.moved = True
+                self.show = False
                 self.guidata["frame"].configure(
                     highlightbackground="green", highlightthickness=2)
                 self.path = os.path.join(destpath, self.name.get())
@@ -280,6 +281,7 @@ Thank you for using this program!""")
     def makegridsquare(self, parent, imageobj, setguidata):
         frame = tk.Frame(parent, width=self.thumbnailsize +
                          14, height=self.thumbnailsize+24)
+        frame.obj=imageobj
         try:
             if setguidata:
                 try:
@@ -487,7 +489,9 @@ Thank you for using this program!""")
     def showhiddensquares(self):
         if self.showhiddenvar.get():
             for x in self.gridsquarelist:
+                x.obj.guidata["frame"]=x
                 self.imagegrid.window_create("insert", window=x)
+
         else:
             self.hideassignedsquare(self.fileManager.imagelist)
             self.hidemoved()
@@ -497,7 +501,6 @@ Thank you for using this program!""")
             if x.guidata["show"] or x.dest == "":
                 self.imagegrid.window_create(
                     "insert", window=x.guidata["frame"])
-                x.guidata["frame"].grid()
 
     def showthisdest(self, dest, *args):
         destwindow = tk.Toplevel()
