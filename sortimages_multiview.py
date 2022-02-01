@@ -1,3 +1,4 @@
+from operator import indexOf
 import os
 from sys import exit
 import textwrap
@@ -237,7 +238,7 @@ Thank you for using this program!""")
         self.rowconfigure(0, weight=10)
         self.rowconfigure(1, weight=0)
         self.protocol("WM_DELETE_WINDOW", self.closeprogram)
-        self.winfo_toplevel().title("Simple Image Sorter: Multiview Edition v2.2")
+        self.winfo_toplevel().title("Simple Image Sorter: Multiview Edition v2.2.2")
         self.leftui.bind("<Configure>", self.buttonResizeOnWindowResize)
         self.buttonResizeOnWindowResize("a")
 
@@ -281,7 +282,7 @@ Thank you for using this program!""")
     def makegridsquare(self, parent, imageobj, setguidata):
         frame = tk.Frame(parent, width=self.thumbnailsize +
                          14, height=self.thumbnailsize+24)
-        frame.obj=imageobj
+        frame.obj = imageobj
         try:
             if setguidata:
                 try:
@@ -320,6 +321,14 @@ Thank you for using this program!""")
                 bindhandler, self.imagegrid, "scroll"))
             check.bind("<MouseWheel>", partial(
                 bindhandler, self.imagegrid, "scroll"))
+            if imageobj.moved:
+                frame.configure(
+                    highlightbackground="green", highlightthickness=2)
+                if os.path.dirname(imageobj.path) in self.fileManager.destinationsraw:
+                    color = self.fileManager.destinations[indexOf(
+                        self.fileManager.destinationsraw,os.path.dirname(imageobj.path))]['color']
+                    frame['background'] = color
+                    canvas['background'] = color
         except Exception as e:
             logging.error(e)
         return frame
@@ -376,7 +385,7 @@ Thank you for using this program!""")
         elif type == "f":
             d = tkFileDialog.askopenfile(initialdir=os.getcwd(
             ), title="Select Session Data File", filetypes=(("JavaScript Object Notation", "*.json"),))
-            path=d.name
+            path = d.name
         if isinstance(target, tk.Entry):
             target.delete(0, len(self.sdpEntry.get()))
             target.insert(0, path)
@@ -384,9 +393,13 @@ Thank you for using this program!""")
     def guisetup(self, destinations):
         sdpEntry = self.sdpEntry
         ddpEntry = self.ddpEntry
+        sdpEntry.config(state=tk.DISABLED)
+        ddpEntry.config(state=tk.DISABLED)
         panel = self.panel
         buttonframe = self.buttonframe
         hotkeys = self.hotkeys
+        for key in hotkeys:
+            self.unbind_all(key)
         for x in self.buttons:
             x.destroy()  # clear the gui
         panel.destroy()
@@ -428,8 +441,6 @@ Thank you for using this program!""")
 
             self.buttons.append(newbut)
             guirow += 1
-        sdpEntry.config(state=tk.DISABLED)
-        ddpEntry.config(state=tk.DISABLED)
         self.entryframe.grid_remove()
         # options frame
         optionsframe = tk.Frame(self.leftui)
@@ -489,7 +500,7 @@ Thank you for using this program!""")
     def showhiddensquares(self):
         if self.showhiddenvar.get():
             for x in self.gridsquarelist:
-                x.obj.guidata["frame"]=x
+                x.obj.guidata["frame"] = x
                 self.imagegrid.window_create("insert", window=x)
 
         else:
@@ -504,6 +515,8 @@ Thank you for using this program!""")
 
     def showthisdest(self, dest, *args):
         destwindow = tk.Toplevel()
+        destwindow.geometry(str(int(self.winfo_screenwidth(
+        )*0.80)) + "x" + str(self.winfo_screenheight()-120)+"+365+60")
         destwindow.winfo_toplevel().title(
             "Files designated for" + dest['path'])
         destgrid = tk.Text(destwindow, wrap='word', borderwidth=0,
@@ -653,7 +666,8 @@ class SortImages:
                     "moved": obj.moved,
                     "thumbnail": thumb
                 })
-            save = {"dest": self.ddp, "source":self.sdp, "imagelist": imagesavedata}
+            save = {"dest": self.ddp, "source": self.sdp,
+                    "imagelist": imagesavedata}
             with open(self.gui.sessionpathvar.get(), "w+") as savef:
                 json.dump(save, savef)
 
@@ -664,15 +678,16 @@ class SortImages:
                 sdata = savef.read()
                 savedata = json.loads(sdata)
             gui = self.gui
-            self.ddp=savedata['dest']
-            self.sdp=savedata['source']
+            self.ddp = savedata['dest']
+            self.sdp = savedata['source']
             self.setup(savedata['dest'])
             for o in savedata['imagelist']:
-                n = Imagefile(o['name'], o['path'])
-                n.checked.set(o['checked'])
-                n.moved = o['moved']
-                n.thumbnail = o['thumbnail']
-                self.imagelist.append(n)
+                if os.path.exists(o['path']):
+                    n = Imagefile(o['name'], o['path'])
+                    n.checked.set(o['checked'])
+                    n.moved = o['moved']
+                    n.thumbnail = o['thumbnail']
+                    self.imagelist.append(n)
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             sublist = self.imagelist[0:listmax]
             gui.displaygrid(self.imagelist, range(0, gui.squaresperpage.get()))
@@ -691,7 +706,8 @@ class SortImages:
             self.setup(self.ddp)
             logging.info("GUI setup")
             gui.guisetup(self.destinations)
-            gui.sessionpathvar.set(os.path.basename(self.sdp)+"-"+os.path.basename(self.ddp)+".json")
+            gui.sessionpathvar.set(os.path.basename(
+                self.sdp)+"-"+os.path.basename(self.ddp)+".json")
             logging.info("displaying first image grid")
             self.walk(self.sdp)
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
@@ -712,12 +728,14 @@ class SortImages:
     def setup(self, dest):
         # scan the destination
         self.destinations = []
+        self.destinationsraw = []
         with os.scandir(dest) as it:
             for entry in it:
                 if entry.is_dir():
                     random.seed(entry.name)
                     self.destinations.append(
                         {'name': entry.name, 'path': entry.path, 'color': randomColor()})
+                    self.destinationsraw.append(entry.path)
 
     def makethumb(self, imagefile):
         im = pyvips.Image.new_from_file(imagefile.path,)
