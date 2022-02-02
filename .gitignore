@@ -136,3 +136,4 @@ libvips-42.dll
 libvips-cpp-42.dll
 session.json
 *.json
+*.code-workspace

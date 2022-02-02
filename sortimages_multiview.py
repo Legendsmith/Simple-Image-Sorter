@@ -103,15 +103,16 @@ def saveprefs(manager, gui):
     else:
         ddp = ""
     save = {"srcpath": sdp, "despath": ddp, "exclude": manager.exclude, "hotkeys": gui.hotkeys, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads, "hideonassign": gui.hideonassignvar.get(
-    ), "hidemoved": gui.hidemovedvar.get(), "squaresperpage": gui.squaresperpage.get(), "geometry": gui.winfo_geometry(), "imagewindowgeometry": gui.imagewindowgeometry, "lastsession": gui.sessionpathvar.get()}
+    ), "hidemoved": gui.hidemovedvar.get(), "squaresperpage": gui.squaresperpage.get(), "geometry": gui.winfo_geometry(), "imagewindowgeometry": gui.imagewindowgeometry, "lastsession": gui.sessionpathvar.get(),"autosave":manager.autosave}
     try:
         with open("prefs.json", "w+") as savef:
-            json.dump(save, savef)
+            json.dump(save, savef,indent=4, sort_keys=True)
             logging.debug(save)
     except Exception as e:
         logging.warning(("failed to save prefs, error: %s", e))
     try:
-        manager.savesession()
+        if manager.autosave:
+            manager.savesession(False)
     except Exception as e:
         logging.warning(("failed to save session, error: %s", e))
 
@@ -129,7 +130,6 @@ def bindhandler(*args):
 
 class GUIManager(tk.Tk):
     thumbnailsize = 256
-
     def __init__(self, fileManager) -> None:
         super().__init__()
         # variable initiation
@@ -154,10 +154,8 @@ class GUIManager(tk.Tk):
         self.toppane = Panedwindow(self, orient="horizontal")
         # Frame for the left hand side that holds the setup and also the destination buttons.
         self.leftui = tk.Frame(self.toppane)
-        self.leftui.grid(row=0, column=0, sticky="NESW")
+        #self.leftui.grid(row=0, column=0, sticky="NESW")
         self.leftui.columnconfigure(0, weight=1)
-        self.leftui.columnconfigure(1, weight=1)
-        #self.leftui.columnconfigure(2, weight=1)
         self.toppane.add(self.leftui, weight=1)
         self.panel = tk.Label(self.leftui, wraplength=300, justify="left", text="""Select a source directory to search for images in above.
 The program will find all png, gif, jpg, bmp, pcx, tiff, Webp, and psds. It can has as many sub-folders as you like, the program will scan them all (except exclusions).
@@ -172,16 +170,14 @@ Right-click on Thumbnails to show a zoomable full view. You can also **rename** 
 
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class.
 Thank you for using this program!""")
-        self.panel.grid(row=11, column=0, columnspan=200,
+        self.panel.grid(row=1, column=0, columnspan=200,
                         rowspan=200, sticky="NSEW")
 
         self.columnconfigure(0, weight=1)
         self.buttonframe = tk.Frame(master=self.leftui)
         self.buttonframe.grid(
-            column=0, row=1, sticky="NSEW", rowspan=2, columnspan=3,)
+            column=0, row=1, sticky="NSEW")
         self.buttonframe.columnconfigure(0, weight=1)
-        self.buttonframe.columnconfigure(1, weight=1)
-        self.buttonframe.columnconfigure(2, weight=1)
         self.entryframe = tk.Frame(master=self.leftui)
         self.entryframe.columnconfigure(1, weight=1)
         self.sdpEntry = tk.Entry(
@@ -230,15 +226,14 @@ Thank you for using this program!""")
         imagegridframe.columnconfigure(0, weight=1)
 
         self.toppane.add(imagegridframe, weight=3)
-        self.toppane.grid(row=0, column=0, columnspan=200,
-                          rowspan=200, sticky="NSEW")
+        self.toppane.grid(row=0, column=0, sticky="NSEW")
         self.toppane.configure()
         self.columnconfigure(0, weight=10)
         self.columnconfigure(1, weight=0)
         self.rowconfigure(0, weight=10)
         self.rowconfigure(1, weight=0)
         self.protocol("WM_DELETE_WINDOW", self.closeprogram)
-        self.winfo_toplevel().title("Simple Image Sorter: Multiview Edition v2.2.2")
+        self.winfo_toplevel().title("Simple Image Sorter: Multiview Edition v2.3")
         self.leftui.bind("<Configure>", self.buttonResizeOnWindowResize)
         self.buttonResizeOnWindowResize("a")
 
@@ -253,9 +248,16 @@ Thank you for using this program!""")
         self.hideassignedsquare(self.fileManager.imagelist)
 
     def closeprogram(self):
-        saveprefs(self.fileManager, self)
-        self.destroy()
-        exit(0)
+        if self.fileManager.hasunmoved:
+            if askokcancel("Designated but Un-Moved files, really quit?","You have destination designated, but unmoved files. (Simply cancel and Move All if you want)"):
+                saveprefs(self.fileManager, self)
+                self.destroy()
+                exit(0)
+        else:
+            saveprefs(self.fileManager, self)
+            self.destroy()
+            exit(0)
+
 
     def excludeshow(self):
         excludewindow = tk.Toplevel()
@@ -345,7 +347,7 @@ Thank you for using this program!""")
         if len(self.buttons) > 0:
             for x in self.buttons:
                 x.configure(wraplength=(self.buttons[0].winfo_width()-1))
-
+    
     def displayimage(self, imageobj, a):
         path = imageobj.path
         if hasattr(self, 'imagewindow'):
@@ -407,16 +409,20 @@ Thank you for using this program!""")
         guicol = 0
         itern = 0
         smallfont = tkfont.Font(family='Helvetica', size=10)
-        columns = 2
+        columns = 1
+        if len(destinations) > int((self.leftui.winfo_height()/35)-2):
+            columns=2
+            buttonframe.columnconfigure(1, weight=1)
         if len(destinations) > int((self.leftui.winfo_height()/15)-4):
             columns = 3
+            buttonframe.columnconfigure(2, weight=1)
         for x in destinations:
             color = x['color']
             if x['name'] != "SKIP" and x['name'] != "BACK":
                 if(itern < len(hotkeys)):
                     newbut = tk.Button(buttonframe, text=hotkeys[itern] + ": " + x['name'], command=partial(
                         self.fileManager.setDestination, x, {"widget": None}), anchor="w", wraplength=(self.leftui.winfo_width()/columns)-1)
-                    self.bind(hotkeys[itern], partial(
+                    self.bind_all(hotkeys[itern], partial(
                         self.fileManager.setDestination, x))
                     fg = 'white'
                     if luminance(color) == 'light':
@@ -467,6 +473,9 @@ Thank you for using this program!""")
         squaresperpageentry.grid(row=2, column=0, sticky="E")
         addpagebut.grid(row=2, column=1, sticky="EW")
         hideonassign.grid(column=1, row=0)
+        # save button
+        savebutton = tk.Button(optionsframe,text="Save Session",command=partial(self.fileManager.savesession,True))
+        savebutton.grid(column=0,row=0,sticky="ew")
         moveallbutton = tk.Button(
             optionsframe, text="Move All", command=self.fileManager.moveall)
         moveallbutton.grid(column=1, row=3, sticky="EW")
@@ -475,10 +484,12 @@ Thank you for using this program!""")
         clearallbutton.grid(row=3, column=0, sticky="EW")
         optionsframe.columnconfigure(0, weight=1)
         optionsframe.columnconfigure(1, weight=3)
-        optionsframe.columnconfigure(2, weight=2)
+        
         self.optionsframe = optionsframe
         self.optionsframe.grid(row=0, column=0, sticky="ew")
         self.bind_all("<Button-1>", self.setfocus)
+        optionsframe.configure(highlightbackground="green", highlightthickness=2)
+        self.buttonframe.configure(highlightbackground="green", highlightthickness=2)
 
     def setfocus(self, event):
         event.widget.focus_set()
@@ -540,7 +551,8 @@ Thank you for using this program!""")
                         self.imagegrid.window_configure(
                             x.guidata["frame"], window='')
                     except Exception as e:
-                        logging.error("Error: "+e)
+                        #logging.error(e)
+                        pass
 
     def addpage(self, *args):
         filelist = self.fileManager.imagelist
@@ -560,6 +572,8 @@ class SortImages:
     thumbnailsize = 256
 
     def __init__(self) -> None:
+        self.hasunmoved=False
+        self.autosave=True
         self.gui = GUIManager(self)
         # note, just load the preferences then pass it to the guimanager for processing there
         if(os.path.exists("data") and os.path.isdir("data")):
@@ -575,8 +589,8 @@ class SortImages:
                 if 'hotkeys' in jprefs:
                     hotkeys = jprefs["hotkeys"]
                 if 'thumbnailsize' in jprefs:
-                    self.gui.thumbnailsize = jprefs["thumbnailsize"]
-                    self.thumbnailsize = jprefs["thumbnailsize"]
+                    self.gui.thumbnailsize = int(jprefs["thumbnailsize"])
+                    self.thumbnailsize = int(jprefs["thumbnailsize"])
                 if 'threads' in jprefs:
                     self.threads = jprefs['threads']
                 else:
@@ -591,20 +605,24 @@ class SortImages:
                 self.gui.sdpEntry.insert(0, jprefs["srcpath"])
                 self.gui.ddpEntry.insert(0, jprefs["despath"])
                 if "squaresperpage" in jprefs:
-                    self.gui.squaresperpage.set(jprefs["squaresperpage"])
+                    self.gui.squaresperpage.set(int(jprefs["squaresperpage"]))
                 if "imagewindowgeometry" in jprefs:
                     self.gui.imagewindowgeometry = jprefs["imagewindowgeometry"]
                 if "geometry" in jprefs:
                     self.gui.geometry(jprefs["geometry"])
                 if "lastsession" in jprefs:
                     self.gui.sessionpathvar.set(jprefs['lastsession'])
+                if "autosavesession" in jprefs:
+                    self.autosave = jprefs['autosave']
             if len(hotkeys) > 1:
                 self.gui.hotkeys = hotkeys
         except Exception as e:
+            logging.error("Error loading prefs.json, it is possibly corrupt, try deleting it, or else it doesn't exist and will be created upon exiting the program.")
             logging.error(e)
         self.gui.mainloop()
 
     def moveall(self):
+        self.hasunmoved = False
         loglist = []
         for x in self.imagelist:
             out = x.move()
@@ -631,6 +649,7 @@ class SortImages:
         return self.imagelist
 
     def setDestination(self, *args):
+        self.hasunmoved = True
         marked = []
         dest = args[0]
         try:
@@ -650,9 +669,13 @@ class SortImages:
                 obj.checked.set(False)
             self.gui.hideassignedsquare(marked)
 
-    def savesession(self):
+    def savesession(self,asksavelocation):
+        if asksavelocation:
+            filet=[("Javascript Object Notation","*.json")]
+            savelocation=tkFileDialog.asksaveasfilename(confirmoverwrite=True,defaultextension=filet,filetypes=filet,initialdir=os.getcwd(),initialfile=self.gui.sessionpathvar.get())
+        else:
+            savelocation = self.gui.sessionpathvar.get()
         if len(self.imagelist) > 0:
-
             imagesavedata = []
             for obj in self.imagelist:
                 if hasattr(obj, 'thumbnail'):
@@ -667,8 +690,8 @@ class SortImages:
                     "thumbnail": thumb
                 })
             save = {"dest": self.ddp, "source": self.sdp,
-                    "imagelist": imagesavedata}
-            with open(self.gui.sessionpathvar.get(), "w+") as savef:
+                    "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize}
+            with open(savelocation, "w+") as savef:
                 json.dump(save, savef)
 
     def loadsession(self):
@@ -688,6 +711,8 @@ class SortImages:
                     n.moved = o['moved']
                     n.thumbnail = o['thumbnail']
                     self.imagelist.append(n)
+            self.thumbnailsize=savedata['thumbnailsize']
+            self.gui.thumbnailsize=savedata['thumbnailsize']
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             sublist = self.imagelist[0:listmax]
             gui.displaygrid(self.imagelist, range(0, gui.squaresperpage.get()))
