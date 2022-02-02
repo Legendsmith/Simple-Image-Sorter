@@ -483,13 +483,10 @@ Thank you for using this program!""")
             optionsframe, text="Clear", command=self.fileManager.clear)
         clearallbutton.grid(row=3, column=0, sticky="EW")
         optionsframe.columnconfigure(0, weight=1)
-        optionsframe.columnconfigure(1, weight=3)
-        
+        optionsframe.columnconfigure(1, weight=3)  
         self.optionsframe = optionsframe
         self.optionsframe.grid(row=0, column=0, sticky="ew")
         self.bind_all("<Button-1>", self.setfocus)
-        optionsframe.configure(highlightbackground="green", highlightthickness=2)
-        self.buttonframe.configure(highlightbackground="green", highlightthickness=2)
 
     def setfocus(self, event):
         event.widget.focus_set()
