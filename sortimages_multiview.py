@@ -1,7 +1,6 @@
 from operator import indexOf
 import os
 from sys import exit
-import textwrap
 from shutil import move as shmove
 import tkinter as tk
 from tkinter.messagebox import askokcancel
@@ -19,7 +18,6 @@ from canvasimage import CanvasImage
 import concurrent.futures as concurrent
 import logging
 from hashlib import md5
-from re import split as resplit
 import pyvips
 
 
@@ -287,6 +285,8 @@ Thank you for using this program!""")
         frame.obj = imageobj
         try:
             if setguidata:
+                if not os.path.exists(imageobj.thumbnail):
+                    self.fileManager.makethumb(imageobj)
                 try:
                     buffer = pyvips.Image.new_from_file(imageobj.thumbnail)
                     img = ImageTk.PhotoImage(Image.frombuffer(
@@ -300,10 +300,9 @@ Thank you for using this program!""")
                                height=self.thumbnailsize)
             canvas.create_image(
                 self.thumbnailsize/2, self.thumbnailsize/2, anchor="center", image=img)
-            text = textwrap.fill(
-                imageobj.name.get(), floor(self.thumbnailsize/12))
+            #text = textwrap.fill(imageobj.name.get(), floor(self.thumbnailsize/12))
             check = Checkbutton(
-                frame, text=text, variable=imageobj.checked, onvalue=True, offvalue=False)
+                frame, textvariable=imageobj.name, variable=imageobj.checked, onvalue=True, offvalue=False)
             canvas.grid(column=0, row=0, sticky="NSEW")
             check.grid(column=0, row=1, sticky="N")
             frame.rowconfigure(0, weight=4)
@@ -331,6 +330,7 @@ Thank you for using this program!""")
                         self.fileManager.destinationsraw,os.path.dirname(imageobj.path))]['color']
                     frame['background'] = color
                     canvas['background'] = color
+            frame.configure(height=self.thumbnailsize+10)
         except Exception as e:
             logging.error(e)
         return frame
@@ -341,7 +341,6 @@ Thank you for using this program!""")
                 self.imagegrid, imagelist[i], True)
             self.gridsquarelist.append(gridsquare)
             self.imagegrid.window_create("insert", window=gridsquare)
-            gridsquare.configure(height=self.thumbnailsize+10)
 
     def buttonResizeOnWindowResize(self, b=""):
         if len(self.buttons) > 0:
@@ -508,8 +507,11 @@ Thank you for using this program!""")
     def showhiddensquares(self):
         if self.showhiddenvar.get():
             for x in self.gridsquarelist:
-                x.obj.guidata["frame"] = x
-                self.imagegrid.window_create("insert", window=x)
+                try:
+                    x.obj.guidata["frame"] = x
+                    self.imagegrid.window_create("insert", window=x)
+                except:
+                    pass
 
         else:
             self.hideassignedsquare(self.fileManager.imagelist)
