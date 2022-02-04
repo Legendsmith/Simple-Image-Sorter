@@ -1,3 +1,6 @@
+# todo:
+# Filename dupicate scanning to prevent collisions
+# Check if filename already exists on move.
 from operator import indexOf
 import os
 from sys import exit
@@ -6,6 +9,7 @@ import tkinter as tk
 from tkinter.messagebox import askokcancel
 import tkinter.scrolledtext as tkst
 from tkinter.ttk import Panedwindow, Checkbutton
+from unittest.util import strclass
 from PIL import Image, ImageTk
 from functools import partial
 from math import floor
@@ -19,11 +23,13 @@ import concurrent.futures as concurrent
 import logging
 from hashlib import md5
 import pyvips
+from tktooltip import ToolTip
 
 
 class Imagefile:
     path = ""
     dest = ""
+    dupename=False
 
     def __init__(self, name, path) -> None:
         self.name = tk.StringVar()
@@ -49,6 +55,8 @@ class Imagefile:
             except Exception as e:
                 logging.error("Error moving: %s . File: %s",
                               e, self.name.get())
+                self.guidata["frame"].configure(
+                    highlightbackground="red", highlightthickness=2)
                 return ("Error moving: %s . File: %s", e, self.name.get())
 
     def setid(self, id):
@@ -107,12 +115,12 @@ def saveprefs(manager, gui):
             json.dump(save, savef,indent=4, sort_keys=True)
             logging.debug(save)
     except Exception as e:
-        logging.warning(("failed to save prefs, error: %s", e))
+        logging.warning(("Failed to save prefs:", e))
     try:
         if manager.autosave:
             manager.savesession(False)
     except Exception as e:
-        logging.warning(("failed to save session, error: %s", e))
+        logging.warning(("Failed to save session:", e))
 
 
 def bindhandler(*args):
@@ -188,14 +196,16 @@ Thank you for using this program!""")
         ddplabel = tk.Button(
             self.entryframe, text="Destination Folder:", command=partial(self.filedialogselect, self.ddpEntry, "d"))
         self.activebutton = tk.Button(
-            self.entryframe, text="Ready", command=partial(fileManager.validate, self))
-
+            self.entryframe, text="New Session", command=partial(fileManager.validate, self))
+        ToolTip(self.activebutton,delay=1,msg="Start a new Session with the entered source and destination")
         self.loadpathentry = tk.Entry(
             self.entryframe, takefocus=False, textvariable=self.sessionpathvar)
         self.loadbutton = tk.Button(
             self.entryframe, text="Load Session", command=self.fileManager.loadsession)
+        ToolTip(self.loadbutton,delay=1,msg="Load and start the selected session data.")
         loadfolderbutton = tk.Button(self.entryframe, text="Session Data:", command=partial(
             self.filedialogselect, self.loadpathentry, "f"))
+        ToolTip(loadfolderbutton,delay=1,msg="Select a session json file to open.")
         loadfolderbutton.grid(row=3, column=0, sticky='e')
         self.loadbutton.grid(row=3, column=2, sticky='ew')
         self.loadpathentry.grid(row=3, column=1, sticky='ew', padx=2)
@@ -231,7 +241,7 @@ Thank you for using this program!""")
         self.rowconfigure(0, weight=10)
         self.rowconfigure(1, weight=0)
         self.protocol("WM_DELETE_WINDOW", self.closeprogram)
-        self.winfo_toplevel().title("Simple Image Sorter: Multiview Edition v2.3")
+        self.winfo_toplevel().title("Simple Image Sorter: Multiview Edition v2.4")
         self.leftui.bind("<Configure>", self.buttonResizeOnWindowResize)
         self.buttonResizeOnWindowResize("a")
 
@@ -279,6 +289,14 @@ Thank you for using this program!""")
         except:
             pass
 
+
+    def tooltiptext(self,imageobject):
+        text=""
+        if imageobject.dupename:
+            text += "Image has Duplicate Filename!\n"
+        text += "Leftclick to select this for assignment. Rightclick to open full view"
+        return text
+
     def makegridsquare(self, parent, imageobj, setguidata):
         frame = tk.Frame(parent, width=self.thumbnailsize +
                          14, height=self.thumbnailsize+24)
@@ -298,9 +316,10 @@ Thank you for using this program!""")
 
             canvas = tk.Canvas(frame, width=self.thumbnailsize,
                                height=self.thumbnailsize)
+            tooltiptext=tk.StringVar(frame,self.tooltiptext(imageobj))
+            ToolTip(canvas,msg=tooltiptext.get,delay=1)
             canvas.create_image(
                 self.thumbnailsize/2, self.thumbnailsize/2, anchor="center", image=img)
-            #text = textwrap.fill(imageobj.name.get(), floor(self.thumbnailsize/12))
             check = Checkbutton(
                 frame, textvariable=imageobj.name, variable=imageobj.checked, onvalue=True, offvalue=False)
             canvas.grid(column=0, row=0, sticky="NSEW")
@@ -310,7 +329,7 @@ Thank you for using this program!""")
             frame.config(height=self.thumbnailsize+12)
             if(setguidata):  # save the data to the image obj to both store a reference and for later manipulation
                 imageobj.setguidata(
-                    {"img": img, "frame": frame, "canvas": canvas, "check": check, "show": True})
+                    {"img": img, "frame": frame, "canvas": canvas, "check": check, "show": True,"tooltip":tooltiptext})
             # anything other than rightclicking toggles the checkbox, as we want.
             canvas.bind("<Button-1>", partial(bindhandler, check, "invoke"))
             canvas.bind(
@@ -331,6 +350,9 @@ Thank you for using this program!""")
                     frame['background'] = color
                     canvas['background'] = color
             frame.configure(height=self.thumbnailsize+10)
+            if imageobj.dupename:
+                frame.configure(
+                    highlightbackground="yellow", highlightthickness=2)
         except Exception as e:
             logging.error(e)
         return frame
@@ -351,7 +373,7 @@ Thank you for using this program!""")
         path = imageobj.path
         if hasattr(self, 'imagewindow'):
             self.imagewindow.destroy()
-
+        
         self.imagewindow = tk.Toplevel()
         imagewindow = self.imagewindow
         imagewindow.rowconfigure(1, weight=1)
@@ -375,9 +397,11 @@ Thank you for using this program!""")
 
         renameframe.grid(column=0, row=0, sticky="EW")
         imagewindow.protocol("WM_DELETE_WINDOW", self.saveimagewindowgeo)
+        imagewindow.obj = imageobj
 
     def saveimagewindowgeo(self):
         self.imagewindowgeometry = self.imagewindow.winfo_geometry()
+        self.checkdupename(self.imagewindow.obj)
         self.imagewindow.destroy()
 
     def filedialogselect(self, target, type):
@@ -435,6 +459,7 @@ Thank you for using this program!""")
                 itern += 1
             newbut.config(font=("Courier", 12), width=int(
                 (self.leftui.winfo_width()/12)/columns), height=1)
+            ToolTip(newbut,msg="Rightclick to show images assigned to this destination",delay=1)
             if len(x['name']) > 20:
                 newbut.config(font=smallfont)
             newbut.dest = x
@@ -453,33 +478,41 @@ Thank you for using this program!""")
         hideonassign = tk.Checkbutton(optionsframe, text="Hide Assigned",
                                       variable=self.hideonassignvar, onvalue=True, offvalue=False)
         hideonassign.grid(column=0, row=0, sticky='W')
-
+        ToolTip(hideonassign,delay=1,msg="When checked, images that are assigned to a destination be hidden from the grid.")
         showhidden = tk.Checkbutton(optionsframe, text="Show Hidden Images",
                                     variable=self.showhiddenvar, onvalue=True, offvalue=False, command=self.showhiddensquares)
         showhidden.grid(column=0, row=1, sticky="W")
         hidemoved = tk.Checkbutton(optionsframe, text="Hide Moved",
                                    variable=self.hidemovedvar, onvalue=True, offvalue=False, command=self.hidemoved)
         hidemoved.grid(column=1, row=1, sticky="w")
+        ToolTip(hidemoved,delay=1,msg="When checked, images that are moved will be hidden from the grid.")
         self.showhidden = showhidden
         self.hideonassign = hideonassign
         valcmd = self.register(self.isnumber)
         squaresperpageentry = tk.Entry(
             optionsframe, textvariable=self.squaresperpage, validate="key", validatecommand=(valcmd, "%P"), takefocus=False)
+        ToolTip(squaresperpageentry,delay=1,msg="How many more images to add when Load Images is clicked")
         for n in range(0, itern):
             squaresperpageentry.unbind(hotkeys[n])
         addpagebut = tk.Button(
-            optionsframe, text="Add Files", command=self.addpage)
+            optionsframe, text="Load More Images", command=self.addpage)
+
+        ToolTip(addpagebut,msg="Add another batch of files from the source folders.", delay=1)
+
         squaresperpageentry.grid(row=2, column=0, sticky="E")
         addpagebut.grid(row=2, column=1, sticky="EW")
         hideonassign.grid(column=1, row=0)
         # save button
         savebutton = tk.Button(optionsframe,text="Save Session",command=partial(self.fileManager.savesession,True))
+        ToolTip(savebutton,delay=1,msg="Save this image sorting session to a file, where it can be loaded at a later time. Assigned destinations and moved images will be saved.")
         savebutton.grid(column=0,row=0,sticky="ew")
         moveallbutton = tk.Button(
             optionsframe, text="Move All", command=self.fileManager.moveall)
         moveallbutton.grid(column=1, row=3, sticky="EW")
+        ToolTip(moveallbutton,delay=1,msg="Move all images to their assigned destinations, if they have one.")
         clearallbutton = tk.Button(
-            optionsframe, text="Clear", command=self.fileManager.clear)
+            optionsframe, text="Clear Selection", command=self.fileManager.clear)
+        ToolTip(clearallbutton,delay=1,msg="Clear your selection on the grid and any other windows with checkable image grids.")
         clearallbutton.grid(row=3, column=0, sticky="EW")
         optionsframe.columnconfigure(0, weight=1)
         optionsframe.columnconfigure(1, weight=3)  
@@ -563,6 +596,17 @@ Thank you for using this program!""")
             self.fileManager.generatethumbnails(sublist)
             self.displaygrid(self.fileManager.imagelist, ran)
 
+    def checkdupename(self, imageobj):
+        if imageobj.name.get() in self.fileManager.existingnames:
+            imageobj.dupename=True
+            imageobj.guidata["frame"].configure(
+                    highlightbackground="yellow", highlightthickness=2)
+        else:
+            imageobj.dupename=False
+            imageobj.guidata["frame"].configure(highlightthickness=0)
+            self.fileManager.existingnames.add(imageobj.name.get())
+        imageobj.guidata['tooltip'].set(self.tooltiptext(imageobj))
+
 
 class SortImages:
     imagelist = []
@@ -572,6 +616,8 @@ class SortImages:
 
     def __init__(self) -> None:
         self.hasunmoved=False
+        self.existingnames = set()
+        self.duplicatenames=[]
         self.autosave=True
         self.gui = GUIManager(self)
         # note, just load the preferences then pass it to the guimanager for processing there
@@ -638,15 +684,35 @@ class SortImages:
         self.gui.hidemoved()
 
     def walk(self, src):
+        duplicates = self.duplicatenames
+        existing = self.existingnames
         for root, dirs, files in os.walk(src, topdown=True):
             dirs[:] = [d for d in dirs if d not in self.exclude]
             for name in files:
                 ext = name.split(".")[len(name.split("."))-1].lower()
                 if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext == "webp" or ext == "psd":
                     imgfile = Imagefile(name, os.path.join(root, name))
+                    if name in existing:
+                        duplicates.append(imgfile)
+                        imgfile.dupename=True
+                    else:
+                        existing.add(name)
                     self.imagelist.append(imgfile)
         return self.imagelist
+            
+                
+    def checkdupefilenames(self, imagelist):
+        duplicates: list[Imagefile] = []
+        existing: set[str] = set()
 
+        for item in imagelist:
+            if item.name.get() in existing:
+                duplicates.append(item)
+                item.dupename=True
+            else:
+                existing.add(item.name)
+        return duplicates
+        
     def setDestination(self, *args):
         self.hasunmoved = True
         marked = []
@@ -686,10 +752,11 @@ class SortImages:
                     "path": obj.path,
                     "checked": obj.checked.get(),
                     "moved": obj.moved,
-                    "thumbnail": thumb
+                    "thumbnail": thumb,
+                    "dupename":obj.dupename
                 })
             save = {"dest": self.ddp, "source": self.sdp,
-                    "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize}
+                    "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
                 json.dump(save, savef)
 
@@ -703,12 +770,15 @@ class SortImages:
             self.ddp = savedata['dest']
             self.sdp = savedata['source']
             self.setup(savedata['dest'])
+            if 'existingnames' in savedata:
+                self.existingnames = set(savedata['existingnames'])
             for o in savedata['imagelist']:
                 if os.path.exists(o['path']):
                     n = Imagefile(o['name'], o['path'])
                     n.checked.set(o['checked'])
                     n.moved = o['moved']
                     n.thumbnail = o['thumbnail']
+                    n.dupename=o['dupename']
                     self.imagelist.append(n)
             self.thumbnailsize=savedata['thumbnailsize']
             self.gui.thumbnailsize=savedata['thumbnailsize']
@@ -737,7 +807,7 @@ class SortImages:
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             sublist = self.imagelist[0:listmax]
             self.generatethumbnails(sublist)
-            gui.displaygrid(self.imagelist, range(0, gui.squaresperpage.get()))
+            gui.displaygrid(self.imagelist, range(0, min(len(self.imagelist), gui.squaresperpage.get())))
         elif gui.sdpEntry.get() == gui.ddpEntry.get():
             gui.sdpEntry.delete(0, len(gui.sdpEntry.get()))
             gui.ddpEntry.delete(0, len(gui.ddpEntry.get()))
