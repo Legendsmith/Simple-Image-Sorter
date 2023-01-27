@@ -316,8 +316,11 @@ class CanvasImage:
 
 
 tkroot = tk.Tk()
+toppane = tk.Frame(tkroot)
+style = ttk.Style()
+style.theme_use('classic')
 destinations = []
-tkroot.geometry("365x"+str(tkroot.winfo_screenheight()-120))
+tkroot.geometry(str(tkroot.winfo_screenwidth())+"x"+str(tkroot.winfo_screenheight()-120))
 tkroot.geometry("+0+60")
 buttons = []
 imagelist= deque()
@@ -327,7 +330,7 @@ guicol=0
 sdp=""
 ddp=""
 exclude=[]
-columns = 2
+columns = 1
 
 #more guisetup
 #######
@@ -417,20 +420,21 @@ def setup(src,dest):
 def disable_event():
 	pass
 
-
-imagewindow = tk.Toplevel()
-imagewindow.wm_title("Image")
-imagewindow.geometry(str(int(tkroot.winfo_screenwidth()*0.80)) + "x"+ str(tkroot.winfo_screenheight()-120))
-imagewindow.geometry("+365+60")
-imagewindow.protocol("WM_DELETE_WINDOW", disable_event)
+tkroot.columnconfigure(0, weight=1)
+toppane.columnconfigure(1,weight=1)
+guiframe=tk.Frame(toppane)
+imagewindow = tk.Frame(toppane)
 imagewindow.rowconfigure(0, weight=1)  # make the CanvasImage widget expandable
 imagewindow.columnconfigure(0, weight=1)
+guiframe.grid(row=0,column=0,sticky="NS")
+imagewindow.grid(row=0,column=1,sticky="NSEW",columnspan=3)
+toppane.grid(row=0,column=0,sticky="NSEW")
 
 
 hotkeys = "123456qwerty7890uiop[asdfghjkl;zxcvbnm,.!@#$%^QWERT&*()_UIOPASDFGHJKLZXCVBNM<>"
 
 
-panel = tk.Label(tkroot, wraplength=300, justify="left", text="""Select a source directory to search for images in above.
+panel = tk.Label(guiframe, wraplength=300, justify="left", text="""Select a source directory to search for images in above.
 The program will find all png, gif, jpg, bmp, pcx, tiff, Webp, and psds. It can has as many sub-folders as you like, the program will scan them all (except exclusions).
 Enter a root folder to sort to for the "Destination field" too. The destination directory MUST have sub folders, since those are the folders that you will be sorting to.
 It is reccomended that the folder names are not super long. You can always rename them later if you desire longer names. Exclusions let you ignore folder names. They are saved (unless you delete prefs.json). Remember that it's one per line, no commas or anything.
@@ -441,8 +445,8 @@ Thanks you for using this program!""")
 panel.grid(row=11,column=0,columnspan=200,rowspan=200, sticky="NSEW")
 
 tkroot.columnconfigure(0, weight=1)
-buttonframe = tk.Frame(master=tkroot)
-buttonframe.grid(column=0,row=2,sticky="NSEW",rowspan=2,columnspan=3,)
+buttonframe = tk.Frame(guiframe)
+buttonframe.grid(column=0,row=2,sticky="NSEW",rowspan=2,columnspan=3)
 buttonframe.columnconfigure(0,weight=1)
 buttonframe.columnconfigure(1,weight=1)
 buttonframe.columnconfigure(2,weight=1)
@@ -480,18 +484,18 @@ def guisetup():
 	guicol=0
 	itern=0
 	smallfont = tkfont.Font( family='Helvetica',size=10)
-	columns = 2
-	if len(destinations) > int((tkroot.winfo_screenheight()/15)-4):
-		columns = 3
+	columns = 1
+	if len(destinations) > int((guiframe.winfo_height()/35)-2):
+		columns=2
+		buttonframe.columnconfigure(1, weight=1)
 	for x in destinations:
 		if x['name'] != "SKIP" and  x['name'] != "BACK":
 			if(itern < len(hotkeys)):
-				newbut = tk.Button(buttonframe, text=hotkeys[itern] +": "+ x['name'], command= partial(movefile,x['path']),anchor="w", wraplength=(tkroot.winfo_width()/columns)-1)
+				newbut = tk.Button(buttonframe, text=hotkeys[itern] +": "+ x['name'], command= partial(movefile,x['path']),anchor="w", wraplength=(guiframe.winfo_width()/columns)-1)
 				random.seed(x['name'])
 				tkroot.bind_all(hotkeys[itern],partial(movefile,x['path']))
 				color = randomColor()
 				fg = 'white'
-
 				if luminance(color) == 'light':
 					fg = "black"
 				newbut.configure(bg =color, fg =fg)
@@ -507,10 +511,10 @@ def guisetup():
 			imagewindow.bind("<space>",skip)
 		elif x['name'] == "BACK":
 			newbut = tk.Button(buttonframe, text="BACK", command=back)
-		newbut.config(font=("Courier",12),width=int((tkroot.winfo_width()/12)/columns),height=1)
+		newbut.config(font=("Courier",12),width=int((guiframe.winfo_width()/12)/columns),height=1)
 		if len(x['name'])>20:
 			newbut.config(font=smallfont)
-		if guirow > ((tkroot.winfo_screenheight()/35)-2):
+		if guirow > ((tkroot.winfo_height()/35)-2):
 			guirow=1
 			guicol+=1
 		newbut.grid(row=guirow,column=guicol,sticky="ew")
@@ -568,12 +572,12 @@ def saveonexit():
 		pass
 atexit.register(saveonexit)
 #gui setup
-sdpEntry = tk.Entry(tkroot) #scandirpathEntry
-ddpEntry= tk.Entry(tkroot)#dest dir path entry
+sdpEntry = tk.Entry(guiframe) #scandirpathEntry
+ddpEntry= tk.Entry(guiframe)#dest dir path entry
 
-sdplabel= tk.Button(tkroot,text="Source Folder:", command=partial(folderselect,"src"))
-ddplabel= tk.Button(tkroot,text="Destination Folder:", command=partial(folderselect,"des" ))
-activebutton=tk.Button(tkroot,text="Ready",command=validate)
+sdplabel= tk.Button(guiframe,text="Source Folder:", command=partial(folderselect,"src"))
+ddplabel= tk.Button(guiframe,text="Destination Folder:", command=partial(folderselect,"des" ))
+activebutton=tk.Button(guiframe,text="Ready",command=validate)
 
 sdplabel.grid(row=0,column=0,sticky="e")
 sdpEntry.grid(row=0,column=1,sticky="w")
@@ -591,7 +595,7 @@ def excludeshow():
 	excludetext.pack()
 	excludewindow.protocol("WM_DELETE_WINDOW",partial(excludesave,text=excludetext,toplevelwin=excludewindow))
 
-excludebutton=tk.Button(tkroot,text="Manage Exclusions",command=excludeshow)
+excludebutton=tk.Button(guiframe,text="Manage Exclusions",command=excludeshow)
 excludebutton.grid(row=0,column=2)
 
 def excludesave(text,toplevelwin):
