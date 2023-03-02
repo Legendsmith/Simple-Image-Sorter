@@ -413,7 +413,7 @@ def setup(src,dest):
 	for root,dirs,files in os.walk(src,topdown=True):
 		dirs[:] = [d for d in dirs if d not in exclude]
 		for name in files:
-			ext = name.split(".")[len(name.split("."))-1].lower()
+			ext = os.path.splitext(name).lstrip(".")
 			if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext=="webp" or ext=="psd" or ext=="jfif":
 				imagelist.append({"name":name, "path":os.path.join(root,name), "dest":""})
 
