@@ -635,7 +635,7 @@ except Exception:
 #You can always rename them later if you desire longer names.
 #Thanks for using this program!""")
 #textout.config(state=tk.DISABLED)
-tkroot.winfo_toplevel().title("Simple Image Sorter v1.7")
+tkroot.winfo_toplevel().title("Simple Image Sorter v1.8.1")
 
 def closeprogram():
 	saveonexit()
