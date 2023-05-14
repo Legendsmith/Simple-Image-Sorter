@@ -1,2 +1,3 @@
 pyvips
 tkinter-tooltip
+pillow

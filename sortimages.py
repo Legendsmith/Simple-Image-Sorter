@@ -46,7 +46,7 @@ class CanvasImage:
 		""" Initialize the ImageFrame """
 		self.imscale = 1.0  # scale for the canvas image zoom, public for outer classes
 		self.__delta = 1.3  # zoom magnitude
-		self.__filter = Image.ANTIALIAS  # could be: NEAREST, BILINEAR, BICUBIC and ANTIALIAS
+		self.__filter = Image.LANCZOS  # could be: NEAREST, BILINEAR, BICUBIC and ANTIALIAS
 		self.__previous_state = 0  # previous state of the keyboard
 		self.path = path  # path to the image, should be public for outer classes
 		# Create ImageFrame in placeholder widget
@@ -413,7 +413,7 @@ def setup(src,dest):
 	for root,dirs,files in os.walk(src,topdown=True):
 		dirs[:] = [d for d in dirs if d not in exclude]
 		for name in files:
-			ext = os.path.splitext(name).lstrip(".")
+			ext = os.path.splitext(name)[1].lstrip(".")
 			if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext=="webp" or ext=="psd" or ext=="jfif":
 				imagelist.append({"name":name, "path":os.path.join(root,name), "dest":""})
 
@@ -421,15 +421,12 @@ def disable_event():
 	pass
 
 tkroot.columnconfigure(0, weight=1)
-toppane.columnconfigure(1,weight=1)
+tkroot.rowconfigure(0,weight=1)
+toppane.columnconfigure(1,weight=3)
+toppane.rowconfigure(0,weight=1)
+toppane.grid(row=0,column=0,sticky="NSEW",rowspan=200)
 guiframe=tk.Frame(toppane)
-imagewindow = tk.Frame(toppane)
-imagewindow.rowconfigure(0, weight=1)  # make the CanvasImage widget expandable
-imagewindow.columnconfigure(0, weight=1)
 guiframe.grid(row=0,column=0,sticky="NS")
-imagewindow.grid(row=0,column=1,sticky="NSEW",columnspan=3)
-toppane.grid(row=0,column=0,sticky="NSEW")
-
 
 hotkeys = "123456qwerty7890uiop[asdfghjkl;zxcvbnm,.!@#$%^QWERT&*()_UIOPASDFGHJKLZXCVBNM<>"
 
@@ -454,7 +451,8 @@ buttonframe.columnconfigure(2,weight=1)
 def movefile(dest,event=None):
 	global imgiterator
 	global imageframe
-	imageframe.destroy()
+	imageframe.canvas.delete("all")
+	imageframe.imagetk=None
 	shmove(imagelist[imgiterator]["path"],os.path.join(dest,imagelist[imgiterator]["name"]))
 	print("Moved: " + imagelist[imgiterator]["name"] + " to " +dest)
 	imagelist[imgiterator]["dest"] = os.path.join(dest,imagelist[imgiterator]["name"])
@@ -508,7 +506,7 @@ def guisetup():
 		elif x['name'] == "SKIP":
 			newbut = tk.Button(buttonframe, text="SKIP (Space)", command=skip)
 			tkroot.bind("<space>",skip)
-			imagewindow.bind("<space>",skip)
+			#imagewindow.bind("<space>",skip)
 		elif x['name'] == "BACK":
 			newbut = tk.Button(buttonframe, text="BACK", command=back)
 		newbut.config(font=("Courier",12),width=int((guiframe.winfo_width()/12)/columns),height=1)
@@ -532,8 +530,9 @@ def displayimage():
 	global imgiterator
 	global panel
 	global guicol
-	global imagewindow
 	global imageframe
+	global guiframe
+	global tkroot
 	if imgiterator >= len(imagelist):
 		if messagebox.askokcancel("Images Sorted!","Reached the end of files, thanks for using Simple Image Sorter. Press OK to quit, or cancel to navigate back if you wish. If you had not reached the end of the files, this is a bug, please report it. Thank you!"):
 			tkroot.destroy()
@@ -543,10 +542,10 @@ def displayimage():
 			imgiterator = len(imagelist)-1
 	print("Displaying:"+ imagelist[imgiterator]['path'])
 	tkroot.winfo_toplevel().title("Simple Image Sorter: " +imagelist[imgiterator]['path'])
-	imageframe = CanvasImage(imagewindow,imagelist[imgiterator]['path'])
+	imageframe = CanvasImage(toppane,imagelist[imgiterator]['path'])
 	# takes the smaller scale (since that will be the limiting factor) and rescales the image to that so it fits the frame.
-	imageframe.rescale(min(imagewindow.winfo_width()/imageframe.imwidth,imagewindow.winfo_height()/imageframe.imheight))
-	imageframe.grid(column=0,row=0,)
+	imageframe.rescale(min((toppane.winfo_width()-guiframe.winfo_width())/imageframe.imwidth,tkroot.winfo_height()/imageframe.imheight))
+	imageframe.grid(column=1,row=0,sticky="NSEW",rowspan=200)
 
 def folderselect(_type):
 	folder = tkFileDialog.askdirectory()
