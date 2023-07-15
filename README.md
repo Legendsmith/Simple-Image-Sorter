@@ -23,6 +23,7 @@ By default the program will only load a portion of the images in the folder for 
 - You can configure the size of thumbnails in prefs.json. Default is 256px.
 - The program will save your session automatically on exit with the name of source and destination folders, this WILL overwrite.
 - You can save your session manually too with a filename, and load it later to resume where you last left off.
+- You can customize hotkeys by opening `prefs.json` and editing the hotkeys entry. There is no GUI editor or hotkeys at this time.
 
 There are hotkeys and buttons for the folders to sort into, which are essentially your categories, and you can customise hotkeys (though you'll need to restart the program). Hotkeys can be customized in prefs.json
 
