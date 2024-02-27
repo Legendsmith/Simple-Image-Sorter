@@ -439,11 +439,14 @@ You can change the hotkeys in prefs.json, just type a string of letters and numb
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class.
 You can use arrow keys or click and drag to pan the image. Mouse Wheel Zooms the image.
 Thanks you for using this program!""")
-panel.grid(row=11,column=0,columnspan=200,rowspan=200, sticky="NSEW")
+panel.grid(row=12,column=0,columnspan=200, sticky="NSEW")
+rescalemode=tk.BooleanVar(value=True)
+rescalecheckbox = ttk.Checkbutton(guiframe,text="Auto-Zoom Images",variable=rescalemode,onvalue=True,offvalue=False)
+rescalecheckbox.grid(row=3,column=0,sticky="E")
 
 tkroot.columnconfigure(0, weight=1)
 buttonframe = tk.Frame(guiframe)
-buttonframe.grid(column=0,row=2,sticky="NSEW",rowspan=2,columnspan=3)
+buttonframe.grid(column=0,row=4,sticky="NSEW",rowspan=2,columnspan=3)
 buttonframe.columnconfigure(0,weight=1)
 buttonframe.columnconfigure(1,weight=1)
 buttonframe.columnconfigure(2,weight=1)
@@ -533,6 +536,7 @@ def displayimage():
 	global imageframe
 	global guiframe
 	global tkroot
+	global rescalemode
 	if imgiterator >= len(imagelist):
 		if messagebox.askokcancel("Images Sorted!","Reached the end of files, thanks for using Simple Image Sorter. Press OK to quit, or cancel to navigate back if you wish. If you had not reached the end of the files, this is a bug, please report it. Thank you!"):
 			tkroot.destroy()
@@ -544,7 +548,9 @@ def displayimage():
 	tkroot.winfo_toplevel().title("Simple Image Sorter: " +imagelist[imgiterator]['path'])
 	imageframe = CanvasImage(toppane,imagelist[imgiterator]['path'])
 	# takes the smaller scale (since that will be the limiting factor) and rescales the image to that so it fits the frame.
-	imageframe.rescale(min((toppane.winfo_width()-guiframe.winfo_width())/imageframe.imwidth,tkroot.winfo_height()/imageframe.imheight))
+	if rescalemode.get():
+		print(rescalemode.get())
+		imageframe.rescale(min((toppane.winfo_width()-guiframe.winfo_width())/imageframe.imwidth,tkroot.winfo_height()/imageframe.imheight))
 	imageframe.grid(column=1,row=0,sticky="NSEW",rowspan=200)
 
 def folderselect(_type):
@@ -635,7 +641,7 @@ except Exception:
 #You can always rename them later if you desire longer names.
 #Thanks for using this program!""")
 #textout.config(state=tk.DISABLED)
-tkroot.winfo_toplevel().title("Simple Image Sorter v1.8.1")
+tkroot.winfo_toplevel().title("Simple Image Sorter v1.8.2")
 
 def closeprogram():
 	saveonexit()
