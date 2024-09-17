@@ -12,7 +12,7 @@ class CanvasImage:
 		""" Initialize the ImageFrame """
 		self.imscale = 1.0  # scale for the canvas image zoom, public for outer classes
 		self.__delta = 1.3  # zoom magnitude
-		self.__filter = Image.ANTIALIAS  # could be: NEAREST, BILINEAR, BICUBIC and ANTIALIAS
+		self.__filter = Image.Resampling.LANCZOS  # could be: NEAREST, BILINEAR, BICUBIC and ANTIALIAS
 		self.__previous_state = 0  # previous state of the keyboard
 		self.path = path  # path to the image, should be public for outer classes
 		# Create ImageFrame in placeholder widget
