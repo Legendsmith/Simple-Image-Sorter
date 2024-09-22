@@ -355,6 +355,7 @@ Thank you for using this program!""")
             target.insert(0, path)
 
     def guisetup(self, destinations):
+        self.sortbydatecheck.destroy() #Hides the sortbydate checkbox when you search
         sdpEntry = self.sdpEntry
         ddpEntry = self.ddpEntry
         sdpEntry.config(state=tk.DISABLED)
