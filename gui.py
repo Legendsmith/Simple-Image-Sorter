@@ -55,7 +55,7 @@ def saveprefs(manager, gui):
     else:
         ddp = ""
     save = {"srcpath": sdp, "despath": ddp, "exclude": manager.exclude, "hotkeys": gui.hotkeys, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads, "hideonassign": gui.hideonassignvar.get(
-    ), "hidemoved": gui.hidemovedvar.get(), "squaresperpage": gui.squaresperpage.get(), "geometry": gui.winfo_geometry(), "lastsession": gui.sessionpathvar.get(),"autosave":manager.autosave}
+    ), "hidemoved": gui.hidemovedvar.get(), "sortbydate": gui.sortbydatevar.get(), "squaresperpage": gui.squaresperpage.get(), "geometry": gui.winfo_geometry(),"imagewindowgeometry": gui.imagewindowgeometry, "lastsession": gui.sessionpathvar.get(),"autosave":manager.autosave}
     try:
         with open("prefs.json", "w+") as savef:
             json.dump(save, savef,indent=4, sort_keys=True)
@@ -79,7 +79,7 @@ class GUIManager(tk.Tk):
         self.hideonassignvar.set(True)
         self.hidemovedvar = tk.BooleanVar()
         self.showhiddenvar = tk.BooleanVar()
-        self.sortbydate = tk.BooleanVar()
+        self.sortbydatevar = tk.BooleanVar()
         self.squaresperpage = tk.IntVar()
         self.squaresperpage.set(120)
         self.sessionpathvar = tk.StringVar()
@@ -100,7 +100,7 @@ class GUIManager(tk.Tk):
         self.leftui.columnconfigure(0, weight=1)
         self.toppane.add(self.leftui, weight=1)
         #Add a checkbox to check for sorting preference.
-        self.sortbydatecheck = tk.Checkbutton(self.leftui, text="Sort by Date", variable=self.sortbydate, onvalue=True, offvalue=False, command=self.sortbydate)
+        self.sortbydatecheck = tk.Checkbutton(self.leftui, text="Sort by Date", variable=self.sortbydatevar, onvalue=True, offvalue=False, command=self.sortbydatevar)
         self.sortbydatecheck.grid(row=2, column=0, sticky="w", padx=25)
         self.panel = tk.Label(self.leftui, wraplength=300, justify="left", text="""Select a source directory to search for images in above.
 The program will find all png, gif, jpg, bmp, pcx, tiff, Webp, and psds. It can has as many sub-folders as you like, the program will scan them all (except exclusions).
