@@ -150,6 +150,11 @@ class SortImages:
                     else:
                         existing.add(name)
                     self.imagelist.append(imgfile)
+                    
+        #Default sorting is based on name. This sorts by date modified.
+        if self.gui.sortbydate.get():
+            self.imagelist.sort(key=lambda img: os.path.getmtime(img.path), reverse=True)
+
         return self.imagelist
             
                 
