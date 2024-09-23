@@ -347,7 +347,7 @@ Thank you for using this program!""")
             ), title="Select Session Data File", filetypes=(("JavaScript Object Notation", "*.json"),))
             path = d.name
         if isinstance(target, tk.Entry):
-            target.delete(0, len(self.sdpEntry.get()))
+            target.delete(0, tk.END)
             target.insert(0, path)
 
     def guisetup(self, destinations):
