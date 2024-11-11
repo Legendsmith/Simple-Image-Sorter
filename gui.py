@@ -236,6 +236,11 @@ Thank you for using this program!""")
         frame = tk.Frame(parent, width=self.thumbnailsize +
                          14, height=self.thumbnailsize+24)
         frame.obj = imageobj
+        truncated_filename = self.truncate_text(imageobj)
+        truncated_name_var = tk.StringVar(frame, value=truncated_filename)
+        frame.obj2 = truncated_name_var # This is needed or it is garbage collected I guess
+        frame.grid_propagate(True)
+
         try:
             if setguidata:
                 if not os.path.exists(imageobj.thumbnail):
@@ -256,7 +261,7 @@ Thank you for using this program!""")
             canvas.create_image(
                 self.thumbnailsize/2, self.thumbnailsize/2, anchor="center", image=img)
             check = Checkbutton(
-                frame, textvariable=imageobj.name, variable=imageobj.checked, onvalue=True, offvalue=False)
+                frame, textvariable=truncated_name_var, variable=imageobj.checked, onvalue=True, offvalue=False)
             canvas.grid(column=0, row=0, sticky="NSEW")
             check.grid(column=0, row=1, sticky="N")
             frame.rowconfigure(0, weight=4)
@@ -304,6 +309,25 @@ Thank you for using this program!""")
             for x in self.buttons:
                 x.configure(wraplength=(self.buttons[0].winfo_width()-1))
     
+    def truncate_text(self, imageobj): #max_length must be over 3+extension or negative indexes happen.
+        filename = imageobj.name.get()
+        base_name, ext = os.path.splitext(filename)
+        smallfont = self.smallfont
+        text_width = smallfont.measure(filename)
+
+        if text_width+24 <= self.thumbnailsize:
+
+            return filename # Return whole filename
+
+        ext = ".." + ext
+
+        while True: # Return filename that has been truncated.
+            test_text = base_name + ext # Test with one less character
+            text_width = smallfont.measure(test_text)
+            if text_width+24 < self.thumbnailsize:  # Reserve space for ellipsis
+                break
+            base_name = base_name[:-1]
+        return test_text
     def displayimage(self, imageobj, a):
         path = imageobj.path
         if hasattr(self, 'imagewindow'):
@@ -367,6 +391,7 @@ Thank you for using this program!""")
         guicol = 0
         itern = 0
         smallfont = tkfont.Font(family='Helvetica', size=10)
+        self.smallfont = smallfont
         columns = 1
         if len(destinations) > int((self.leftui.winfo_height()/35)-2):
             columns=2
