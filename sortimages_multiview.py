@@ -32,21 +32,34 @@ class Imagefile:
 
     def move(self) -> str:
         destpath = self.dest
+        do_not_move_if_exists = True # This flag prevents overwriting of files in destination that have the same name as source.
         if destpath != "" and os.path.isdir(destpath):
+            file_name = self.name.get()
+            exists_already_in_destination = os.path.exists(os.path.join(destpath, file_name))
+            if exists_already_in_destination:
+                if do_not_move_if_exists:
+                    logging.warning(f"File {self.name.get()} already exists at destination, file not moved or deleted from source.")
+                    return ("") # Returns if 1. Would overwrite someone
             try:
-                shmove(self.path, os.path.join(destpath, self.name.get()))
+                new_path = os.path.join(destpath, file_name)
+                old_path = os.path.join(self.path, file_name)
+                shmove(self.path, new_path) # Try to move, fails if 1. Locked
                 self.moved = True
                 self.show = False
                 self.guidata["frame"].configure(
                     highlightbackground="green", highlightthickness=2)
-                self.path = os.path.join(destpath, self.name.get())
+                self.path = new_path
                 returnstr = ("Moved:" + self.name.get() +
                              " -> " + destpath + "\n")
                 destpath = ""
+                self.dest = ""
+                self.hasunmoved = False
                 return returnstr
             except Exception as e:
-                logging.error("Error moving: %s . File: %s",
-                              e, self.name.get())
+                logging.warning(f"Error moving/deleting: %s . File: %s {e} {self.name.get()}")
+                if os.path.exists(new_path) and os.path.exists(old_path): # shuti.move has copied a duplicate to destinations, but image couldn't be moved. This deletes the duplicate from destination.
+                    os.remove(new_path)
+                    logging.warning("Image was locked and the move was completed partially, deleting image from destination, leaving it in source")
                 self.guidata["frame"].configure(
                     highlightbackground="red", highlightthickness=2)
                 return ("Error moving: %s . File: %s", e, self.name.get())
@@ -121,20 +134,17 @@ class SortImages:
         self.gui.mainloop()
 
     def moveall(self):
-        self.hasunmoved = False
         loglist = []
         for x in self.imagelist:
             out = x.move()
-            x.dest = ""
             if isinstance(out, str):
                 loglist.append(out)
-
         try:
             if len(loglist) > 0:
                 with open("filelog.txt", "a") as logfile:
                     logfile.writelines(loglist)
-        except:
-            logging.error("Failed to write filelog.txt")
+        except Exception as e:
+            logging.error(f"Failed to write filelog.txt: {e}")
         self.gui.hidemoved()
 
     def walk(self, src):
