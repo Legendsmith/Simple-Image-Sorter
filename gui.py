@@ -80,6 +80,7 @@ class GUIManager(tk.Tk):
         self.hidemovedvar = tk.BooleanVar()
         self.showhiddenvar = tk.BooleanVar()
         self.sortbydatevar = tk.BooleanVar()
+        self.sortbydatevar.set(False)
         self.squaresperpage = tk.IntVar()
         self.squaresperpage.set(120)
         self.sessionpathvar = tk.StringVar()
@@ -100,7 +101,7 @@ class GUIManager(tk.Tk):
         self.leftui.columnconfigure(0, weight=1)
         self.toppane.add(self.leftui, weight=1)
         #Add a checkbox to check for sorting preference.
-        self.sortbydatecheck = tk.Checkbutton(self.leftui, text="Sort by Date", variable=self.sortbydatevar, onvalue=True, offvalue=False, command=self.sortbydatevar)
+        self.sortbydatecheck = Checkbutton(self.leftui, text="Sort by Date", variable=self.sortbydatevar, onvalue=True, offvalue=False, command=self.sortbydatevar)
         self.sortbydatecheck.grid(row=2, column=0, sticky="w", padx=25)
         self.panel = tk.Label(self.leftui, wraplength=300, justify="left", text="""Select a source directory to search for images in above.
 The program will find all png, gif, jpg, bmp, pcx, tiff, Webp, and psds. It can has as many sub-folders as you like, the program will scan them all (except exclusions).
@@ -115,7 +116,7 @@ Right-click on Thumbnails to show a zoomable full view. You can also **rename** 
 
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class.
 Thank you for using this program!""")
-        self.panel.grid(row=1, column=0, columnspan=200,
+        self.panel.grid(row=3, column=0, columnspan=200,
                         rowspan=200, sticky="NSEW")
 
         self.columnconfigure(0, weight=1)
