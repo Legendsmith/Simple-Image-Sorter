@@ -98,6 +98,8 @@ class SortImages:
                     self.gui.hideonassignvar.set(jprefs["hideonassign"])
                 if "hidemoved" in jprefs:
                     self.gui.hidemovedvar.set(jprefs["hidemoved"])
+                if "sortbydate" in jprefs:
+                   self.gui.sortbydatevar.set(jprefs["sortbydate"])
                 self.exclude = jprefs["exclude"]
                 self.gui.sdpEntry.delete(0, len(self.gui.sdpEntry.get()))
                 self.gui.ddpEntry.delete(0, len(self.gui.ddpEntry.get()))
@@ -150,6 +152,11 @@ class SortImages:
                     else:
                         existing.add(name)
                     self.imagelist.append(imgfile)
+
+        #Default sorting is based on name. This sorts by date modified.
+        if self.gui.sortbydatevar.get():
+            self.imagelist.sort(key=lambda img: os.path.getmtime(img.path), reverse=True)
+
         return self.imagelist
             
                 
