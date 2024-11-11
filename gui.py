@@ -223,7 +223,8 @@ Thank you for using this program!""")
         text = text.get('1.0', tk.END).splitlines()
         exclude = []
         for line in text:
-            exclude.append(line)
+            if line != "":
+                exclude.append(line)
         self.fileManager.exclude = exclude
         try:
             toplevelwin.destroy()
