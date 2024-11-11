@@ -186,9 +186,6 @@ Thank you for using this program!""")
         self.leftui.bind("<Configure>", self.buttonResizeOnWindowResize)
         self.buttonResizeOnWindowResize("a")
 
-    def isnumber(self, char):
-        return char.isdigit()
-
     def showall(self):
         for x in self.fileManager.imagelist:
             if x.guidata["show"] == False:
@@ -457,9 +454,12 @@ Thank you for using this program!""")
         ToolTip(hidemoved,delay=1,msg="When checked, images that are moved will be hidden from the grid.")
         self.showhidden = showhidden
         self.hideonassign = hideonassign
-        valcmd = self.register(self.isnumber)
+
         squaresperpageentry = tk.Entry(
-            optionsframe, textvariable=self.squaresperpage, validate="key", validatecommand=(valcmd, "%P"), takefocus=False)
+            optionsframe, textvariable=self.squaresperpage, takefocus=False)
+        if self.squaresperpage.get() < 0: #this wont let you save -1
+            self.squaresperpage.set(1)
+
         ToolTip(squaresperpageentry,delay=1,msg="How many more images to add when Load Images is clicked")
         for n in range(0, itern):
             squaresperpageentry.unbind(hotkeys[n])
