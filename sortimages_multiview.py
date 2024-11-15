@@ -32,22 +32,29 @@ class Imagefile:
 
     def move(self) -> str:
         destpath = self.dest
-        do_not_move_if_exists = True # This flag prevents overwriting of files in destination that have the same name as source.
+
         if destpath != "" and os.path.isdir(destpath):
             file_name = self.name.get()
+
+            # Check for name conflicts (source -> destination)
             exists_already_in_destination = os.path.exists(os.path.join(destpath, file_name))
             if exists_already_in_destination:
-                if do_not_move_if_exists:
-                    logging.warning(f"File {self.name.get()} already exists at destination, file not moved or deleted from source.")
-                    return ("") # Returns if 1. Would overwrite someone
+                print(f"File {self.name.get()[:30]} already exists at destination. Cancelling move.")
+                return ("") # Returns if 1. Would overwrite someone
+            
             try:
                 new_path = os.path.join(destpath, file_name)
-                old_path = os.path.join(self.path, file_name)
-                shmove(self.path, new_path) # Try to move, fails if 1. Locked
+                old_path = self.path
+
+                # Throws exception when image is open.
+                shmove(self.path, new_path)
+
                 self.moved = True
                 self.show = False
+
                 self.guidata["frame"].configure(
                     highlightbackground="green", highlightthickness=2)
+
                 self.path = new_path
                 returnstr = ("Moved:" + self.name.get() +
                              " -> " + destpath + "\n")
@@ -56,10 +63,16 @@ class Imagefile:
                 self.hasunmoved = False
                 return returnstr
             except Exception as e:
-                logging.warning(f"Error moving/deleting: %s . File: %s {e} {self.name.get()}")
-                if os.path.exists(new_path) and os.path.exists(old_path): # shuti.move has copied a duplicate to destinations, but image couldn't be moved. This deletes the duplicate from destination.
+                # Shutil failed. Delete the copy from destination, leaving the original at source.
+                # This only runs if shutil fails, meaning the image couldn't be deleted from source.
+                # It is therefore safe to delete the destination copy.
+                if os.path.exists(new_path) and os.path.exists(old_path):
                     os.remove(new_path)
-                    logging.warning("Image was locked and the move was completed partially, deleting image from destination, leaving it in source")
+                    print("Shutil failed. Coudln't delete from source, cancelling move (deleting copy from destination)")
+                    return "Shutil failed. Coudln't delete from source, cancelling move (deleting copy from destination)"
+                else:
+                    logging.warning(f"Error moving/deleting: %s . File: %s {e} {self.name.get()}")
+
                 self.guidata["frame"].configure(
                     highlightbackground="red", highlightthickness=2)
                 return ("Error moving: %s . File: %s", e, self.name.get())
