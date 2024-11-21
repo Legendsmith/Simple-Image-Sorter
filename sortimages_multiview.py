@@ -167,7 +167,7 @@ class SortImages:
             dirs[:] = [d for d in dirs if d not in self.exclude]
             for name in files:
                 ext = name.split(".")[len(name.split("."))-1].lower()
-                if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext == "webp" or ext == "psd":
+                if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext == "webp" or ext == "psd" or ext == "jfif":
                     imgfile = Imagefile(name, os.path.join(root, name))
                     if name in existing:
                         duplicates.append(imgfile)
