@@ -32,21 +32,47 @@ class Imagefile:
 
     def move(self) -> str:
         destpath = self.dest
+
         if destpath != "" and os.path.isdir(destpath):
+            file_name = self.name.get()
+
+            # Check for name conflicts (source -> destination)
+            exists_already_in_destination = os.path.exists(os.path.join(destpath, file_name))
+            if exists_already_in_destination:
+                print(f"File {self.name.get()[:30]} already exists at destination. Cancelling move.")
+                return ("") # Returns if 1. Would overwrite someone
+            
             try:
-                shmove(self.path, os.path.join(destpath, self.name.get()))
+                new_path = os.path.join(destpath, file_name)
+                old_path = self.path
+
+                # Throws exception when image is open.
+                shmove(self.path, new_path)
+
                 self.moved = True
                 self.show = False
+
                 self.guidata["frame"].configure(
                     highlightbackground="green", highlightthickness=2)
-                self.path = os.path.join(destpath, self.name.get())
+
+                self.path = new_path
                 returnstr = ("Moved:" + self.name.get() +
                              " -> " + destpath + "\n")
                 destpath = ""
+                self.dest = ""
+                self.hasunmoved = False
                 return returnstr
             except Exception as e:
-                logging.error("Error moving: %s . File: %s",
-                              e, self.name.get())
+                # Shutil failed. Delete the copy from destination, leaving the original at source.
+                # This only runs if shutil fails, meaning the image couldn't be deleted from source.
+                # It is therefore safe to delete the destination copy.
+                if os.path.exists(new_path) and os.path.exists(old_path):
+                    os.remove(new_path)
+                    print("Shutil failed. Coudln't delete from source, cancelling move (deleting copy from destination)")
+                    return "Shutil failed. Coudln't delete from source, cancelling move (deleting copy from destination)"
+                else:
+                    logging.warning(f"Error moving/deleting: %s . File: %s {e} {self.name.get()}")
+
                 self.guidata["frame"].configure(
                     highlightbackground="red", highlightthickness=2)
                 return ("Error moving: %s . File: %s", e, self.name.get())
@@ -98,6 +124,8 @@ class SortImages:
                     self.gui.hideonassignvar.set(jprefs["hideonassign"])
                 if "hidemoved" in jprefs:
                     self.gui.hidemovedvar.set(jprefs["hidemoved"])
+                if "sortbydate" in jprefs:
+                   self.gui.sortbydatevar.set(jprefs["sortbydate"])
                 self.exclude = jprefs["exclude"]
                 self.gui.sdpEntry.delete(0, len(self.gui.sdpEntry.get()))
                 self.gui.ddpEntry.delete(0, len(self.gui.ddpEntry.get()))
@@ -119,20 +147,17 @@ class SortImages:
         self.gui.mainloop()
 
     def moveall(self):
-        self.hasunmoved = False
         loglist = []
         for x in self.imagelist:
             out = x.move()
-            x.dest = ""
             if isinstance(out, str):
                 loglist.append(out)
-
         try:
             if len(loglist) > 0:
                 with open("filelog.txt", "a") as logfile:
                     logfile.writelines(loglist)
-        except:
-            logging.error("Failed to write filelog.txt")
+        except Exception as e:
+            logging.error(f"Failed to write filelog.txt: {e}")
         self.gui.hidemoved()
 
     def walk(self, src):
@@ -142,7 +167,7 @@ class SortImages:
             dirs[:] = [d for d in dirs if d not in self.exclude]
             for name in files:
                 ext = name.split(".")[len(name.split("."))-1].lower()
-                if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext == "webp" or ext == "psd":
+                if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext == "webp" or ext == "psd" or ext == "jfif":
                     imgfile = Imagefile(name, os.path.join(root, name))
                     if name in existing:
                         duplicates.append(imgfile)
@@ -150,6 +175,11 @@ class SortImages:
                     else:
                         existing.add(name)
                     self.imagelist.append(imgfile)
+
+        #Default sorting is based on name. This sorts by date modified.
+        if self.gui.sortbydatevar.get():
+            self.imagelist.sort(key=lambda img: os.path.getmtime(img.path), reverse=True)
+
         return self.imagelist
             
                 

@@ -55,7 +55,7 @@ def saveprefs(manager, gui):
     else:
         ddp = ""
     save = {"srcpath": sdp, "despath": ddp, "exclude": manager.exclude, "hotkeys": gui.hotkeys, "thumbnailsize": gui.thumbnailsize, "threads": manager.threads, "hideonassign": gui.hideonassignvar.get(
-    ), "hidemoved": gui.hidemovedvar.get(), "squaresperpage": gui.squaresperpage.get(), "geometry": gui.winfo_geometry(), "lastsession": gui.sessionpathvar.get(),"autosave":manager.autosave}
+    ), "hidemoved": gui.hidemovedvar.get(), "sortbydate": gui.sortbydatevar.get(), "squaresperpage": gui.squaresperpage.get(), "geometry": gui.winfo_geometry(), "lastsession": gui.sessionpathvar.get(),"autosave":manager.autosave}
     try:
         with open("prefs.json", "w+") as savef:
             json.dump(save, savef,indent=4, sort_keys=True)
@@ -79,6 +79,7 @@ class GUIManager(tk.Tk):
         self.hideonassignvar.set(True)
         self.hidemovedvar = tk.BooleanVar()
         self.showhiddenvar = tk.BooleanVar()
+        self.sortbydatevar = tk.BooleanVar()
         self.squaresperpage = tk.IntVar()
         self.squaresperpage.set(120)
         self.sessionpathvar = tk.StringVar()
@@ -98,6 +99,11 @@ class GUIManager(tk.Tk):
         #self.leftui.grid(row=0, column=0, sticky="NESW")
         self.leftui.columnconfigure(0, weight=1)
         self.toppane.add(self.leftui, weight=1)
+
+        #Add a checkbox to check for sorting preference.
+        self.sortbydatecheck = Checkbutton(self.leftui, text="Sort by Date", variable=self.sortbydatevar, onvalue=True, offvalue=False, command=self.sortbydatevar)
+        self.sortbydatecheck.grid(row=2, column=0, sticky="w", padx=25)
+
         self.panel = tk.Label(self.leftui, wraplength=300, justify="left", text="""Select a source directory to search for images in above.
 The program will find all png, gif, jpg, bmp, pcx, tiff, Webp, and psds. It can has as many sub-folders as you like, the program will scan them all (except exclusions).
 Enter a root folder to sort to for the "Destination field" too. The destination directory MUST have sub folders, since those are the folders that you will be sorting to.
@@ -111,7 +117,7 @@ Right-click on Thumbnails to show a zoomable full view. You can also **rename** 
 
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class.
 Thank you for using this program!""")
-        self.panel.grid(row=1, column=0, columnspan=200,
+        self.panel.grid(row=3, column=0, columnspan=200,
                         rowspan=200, sticky="NSEW")
 
         self.columnconfigure(0, weight=1)
@@ -180,9 +186,6 @@ Thank you for using this program!""")
         self.leftui.bind("<Configure>", self.buttonResizeOnWindowResize)
         self.buttonResizeOnWindowResize("a")
 
-    def isnumber(self, char):
-        return char.isdigit()
-
     def showall(self):
         for x in self.fileManager.imagelist:
             if x.guidata["show"] == False:
@@ -217,7 +220,8 @@ Thank you for using this program!""")
         text = text.get('1.0', tk.END).splitlines()
         exclude = []
         for line in text:
-            exclude.append(line)
+            if line != "":
+                exclude.append(line)
         self.fileManager.exclude = exclude
         try:
             toplevelwin.destroy()
@@ -236,6 +240,11 @@ Thank you for using this program!""")
         frame = tk.Frame(parent, width=self.thumbnailsize +
                          14, height=self.thumbnailsize+24)
         frame.obj = imageobj
+        truncated_filename = self.truncate_text(imageobj)
+        truncated_name_var = tk.StringVar(frame, value=truncated_filename)
+        frame.obj2 = truncated_name_var # This is needed or it is garbage collected I guess
+        frame.grid_propagate(True)
+
         try:
             if setguidata:
                 if not os.path.exists(imageobj.thumbnail):
@@ -256,7 +265,7 @@ Thank you for using this program!""")
             canvas.create_image(
                 self.thumbnailsize/2, self.thumbnailsize/2, anchor="center", image=img)
             check = Checkbutton(
-                frame, textvariable=imageobj.name, variable=imageobj.checked, onvalue=True, offvalue=False)
+                frame, textvariable=truncated_name_var, variable=imageobj.checked, onvalue=True, offvalue=False)
             canvas.grid(column=0, row=0, sticky="NSEW")
             check.grid(column=0, row=1, sticky="N")
             frame.rowconfigure(0, weight=4)
@@ -291,6 +300,26 @@ Thank you for using this program!""")
         except Exception as e:
             logging.error(e)
         return frame
+
+    def truncate_text(self, imageobj): #max_length must be over 3+extension or negative indexes happen.
+        filename = imageobj.name.get()
+        base_name, ext = os.path.splitext(filename)
+        smallfont = self.smallfont
+        text_width = smallfont.measure(filename)
+
+        if text_width+24 <= self.thumbnailsize:
+
+            return filename # Return whole filename
+
+        ext = ".." + ext
+
+        while True: # Return filename that has been truncated.
+            test_text = base_name + ext # Test with one less character
+            text_width = smallfont.measure(test_text)
+            if text_width+24 < self.thumbnailsize:  # Reserve space for ellipsis
+                break
+            base_name = base_name[:-1]
+        return test_text
 
     def displaygrid(self, imagelist, range):
         for i in range:
@@ -351,6 +380,7 @@ Thank you for using this program!""")
             target.insert(0, path)
 
     def guisetup(self, destinations):
+        self.sortbydatecheck.destroy() #Hides the sortbydate checkbox when you search
         sdpEntry = self.sdpEntry
         ddpEntry = self.ddpEntry
         sdpEntry.config(state=tk.DISABLED)
@@ -367,6 +397,7 @@ Thank you for using this program!""")
         guicol = 0
         itern = 0
         smallfont = tkfont.Font(family='Helvetica', size=10)
+        self.smallfont = smallfont
         columns = 1
         if len(destinations) > int((self.leftui.winfo_height()/35)-2):
             columns=2
@@ -423,9 +454,12 @@ Thank you for using this program!""")
         ToolTip(hidemoved,delay=1,msg="When checked, images that are moved will be hidden from the grid.")
         self.showhidden = showhidden
         self.hideonassign = hideonassign
-        valcmd = self.register(self.isnumber)
+
         squaresperpageentry = tk.Entry(
-            optionsframe, textvariable=self.squaresperpage, validate="key", validatecommand=(valcmd, "%P"), takefocus=False)
+            optionsframe, textvariable=self.squaresperpage, takefocus=False)
+        if self.squaresperpage.get() < 0: #this wont let you save -1
+            self.squaresperpage.set(1)
+
         ToolTip(squaresperpageentry,delay=1,msg="How many more images to add when Load Images is clicked")
         for n in range(0, itern):
             squaresperpageentry.unbind(hotkeys[n])
