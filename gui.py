@@ -15,9 +15,25 @@ from tkinter.messagebox import askokcancel
 from math import floor,sqrt
 import random
 import os
-import pyvips
 from tkinter import filedialog as tkFileDialog
 import json
+
+def import_pyvips():
+    "This looks scary, but it just points to where 'import pyvips' can find it's files from"
+    "To update this module, change vips-dev-8.16 to your new folder name here and in build.bat"
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    vipsbin = os.path.join(base_path, "vips-dev-8.16", "bin")
+    
+    if not os.path.exists(vipsbin):
+        raise FileNotFoundError(f"The directory {vipsbin} does not exist.")
+
+    os.environ['PATH'] = os.pathsep.join((vipsbin, os.environ['PATH']))
+    os.add_dll_directory(vipsbin)
+import_pyvips()
+try:
+    import pyvips
+except Exception as e:
+    print("Couldn't import pyvips:", e)
 
 def luminance(hexin):
     color = tuple(int(hexin.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
