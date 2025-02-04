@@ -21,7 +21,7 @@ pyinstaller sortimages_multiview.py --noconfirm
 
 :: Set the name of the file to copy and the destination for the file
 set "folderToCopy=vips-dev-8.16"  :: Change this to your actual file name
-set "folderCopyDestination=dist\SIME-QOL\_internal\vips-dev-8.16"  :: Change this to your actual destination folder
+set "folderCopyDestination=dist\sortimages_multiview\_internal\vips-dev-8.16"  :: Change this to your actual destination folder
 
 :::: Copy the folder to the destination folder
 if exist "%folderToCopy%" (
