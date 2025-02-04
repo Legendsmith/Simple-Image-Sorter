@@ -3,20 +3,33 @@
 # Check if filename already exists on move.
 # implement undo
 import os
-from sys import exit
 from shutil import move as shmove
 import tkinter as tk
 from tkinter.messagebox import askokcancel
-from math import floor
 import json
 import random
-from math import floor, sqrt
 from tkinter import filedialog as tkFileDialog
 import concurrent.futures as concurrent
 import logging
 from hashlib import md5
-import pyvips
 from gui import GUIManager, randomColor
+
+def import_pyvips():
+    "This looks scary, but it just points to where 'import pyvips' can find it's files from"
+    "To update this module, change vips-dev-8.16 to your new folder name here and in build.bat"
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    vipsbin = os.path.join(base_path, "vips-dev-8.16", "bin")
+    
+    if not os.path.exists(vipsbin):
+        raise FileNotFoundError(f"The directory {vipsbin} does not exist.")
+
+    os.environ['PATH'] = os.pathsep.join((vipsbin, os.environ['PATH']))
+    os.add_dll_directory(vipsbin)
+import_pyvips()
+try:
+    import pyvips
+except Exception as e:
+    print("Couldn't import pyvips:", e)
 
 class Imagefile:
     path = ""
@@ -40,7 +53,7 @@ class Imagefile:
             exists_already_in_destination = os.path.exists(os.path.join(destpath, file_name))
             if exists_already_in_destination:
                 print(f"File {self.name.get()[:30]} already exists at destination. Cancelling move.")
-                return ("") # Returns if 1. Would overwrite someone
+                return (f"File {self.name.get()[:30]} already exists at destination. Cancelling move.") # Returns if 1. Would overwrite someone
             
             try:
                 new_path = os.path.join(destpath, file_name)
@@ -181,8 +194,7 @@ class SortImages:
             self.imagelist.sort(key=lambda img: os.path.getmtime(img.path), reverse=True)
 
         return self.imagelist
-            
-                
+                         
     def checkdupefilenames(self, imagelist):
         duplicates: list[Imagefile] = []
         existing: set[str] = set()
